@@ -145,6 +145,8 @@ jobs:
         shell: bash
       - name: Install dependencies
         run: bun install
+        env:
+          HUSKY: 0
       - name: Build
         run: ${{ matrix.settings.build }}
         shell: bash
@@ -242,6 +244,8 @@ jobs:
           bun-version: latest
       - name: Install dependencies
         run: bun install
+        env:
+          HUSKY: 0
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
@@ -302,6 +306,8 @@ jobs:
       - name: Install dependencies
         run: |
           bun install
+        env:
+          HUSKY: 0
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
@@ -342,6 +348,8 @@ jobs:
       - name: Install dependencies
         run: |
           bun install
+        env:
+          HUSKY: 0
       - name: Download artifacts
         uses: actions/download-artifact@v7
         with:
@@ -379,6 +387,8 @@ jobs:
           bun-version: latest
       - name: Install dependencies
         run: bun install
+        env:
+          HUSKY: 0
       - name: create npm dirs
         run: bun napi create-npm-dirs
       - name: Download all artifacts
