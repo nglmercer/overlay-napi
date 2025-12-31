@@ -85,12 +85,6 @@ jobs:
             target: armv7-unknown-linux-gnueabihf
             build: bun run build -- --target armv7-unknown-linux-gnueabihf --use-napi-cross
           - host: ubuntu-latest
-            target: aarch64-linux-android
-            build: bun run build -- --target aarch64-linux-android
-          - host: ubuntu-latest
-            target: armv7-linux-androideabi
-            build: bun run build -- --target armv7-linux-androideabi
-          - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
             build: bun run build -- --target aarch64-unknown-linux-musl -x
           - host: windows-latest
