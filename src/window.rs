@@ -1,15 +1,15 @@
 //! Window management and event handling
 
-use napi::{Error, Status, Result};
+use crate::color::Color;
+use crate::types::{WindowLevel, WindowPosition, WindowSize};
 use napi::bindgen_prelude::Buffer;
+use napi::{Error, Result, Status};
 use pixels::{Pixels, SurfaceTexture};
 use std::sync::{Arc, Mutex};
 use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
-use crate::types::{WindowLevel, WindowPosition, WindowSize};
-use crate::color::Color;
 
 /// Internal window state management
 pub struct WindowState {
@@ -82,12 +82,13 @@ pub fn create_overlay_window(
 
   // Create pixels surface - use raw window handle for compatibility
   let surface_texture = SurfaceTexture::new(window_size.width, window_size.height, window.as_ref());
-  let pixels = Pixels::new(window_size.width, window_size.height, surface_texture).map_err(|e| {
-    Error::new(
-      Status::GenericFailure,
-      format!("Failed to create pixels: {}", e),
-    )
-  })?;
+  let pixels =
+    Pixels::new(window_size.width, window_size.height, surface_texture).map_err(|e| {
+      Error::new(
+        Status::GenericFailure,
+        format!("Failed to create pixels: {}", e),
+      )
+    })?;
 
   Ok((window, pixels))
 }
@@ -252,7 +253,7 @@ impl FrameController {
 
   pub fn update_frame(&self, buffer: Buffer) -> Result<()> {
     let mut state = self.state.lock().unwrap();
-    
+
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
       let buffer_data = buffer.as_ref();
@@ -282,7 +283,7 @@ impl FrameController {
 
   pub fn get_frame_size(&self) -> Result<Vec<u32>> {
     let state = self.state.lock().unwrap();
-    
+
     if let Some(pixels) = &state.pixels {
       let frame = pixels.frame();
       let size = frame.len() / 4; // RGBA = 4 bytes per pixel
@@ -300,7 +301,7 @@ impl FrameController {
 
   pub fn clear_frame(&self, color: &Color) -> Result<()> {
     let mut state = self.state.lock().unwrap();
-    
+
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
       let rgba = color.to_rgba();
@@ -327,7 +328,7 @@ impl FrameController {
     color: &Color,
   ) -> Result<()> {
     let mut state = self.state.lock().unwrap();
-    
+
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
       let frame_size = self.get_frame_size()?;
@@ -336,14 +337,65 @@ impl FrameController {
 
       crate::buffer::draw_rectangle_optimized(
         frame,
-        x,
-        y,
-        width,
-        height,
-        frame_width,
-        frame_height,
+        crate::buffer::RectangleParams {
+          x,
+          y,
+          width,
+          height,
+          frame_width,
+          frame_height,
+        },
         color,
       );
+      Ok(())
+    } else {
+      Err(Error::new(
+        Status::GenericFailure,
+        "Overlay not initialized",
+      ))
+    }
+  }
+
+  /// Get the current frame buffer for advanced manipulations
+  pub fn get_frame_buffer(&self) -> Result<Buffer> {
+    let state = self.state.lock().unwrap();
+
+    if let Some(pixels) = &state.pixels {
+      let frame = pixels.frame();
+      Ok(Buffer::from(frame.to_vec()))
+    } else {
+      Err(Error::new(
+        Status::GenericFailure,
+        "Overlay not initialized",
+      ))
+    }
+  }
+
+  /// Manually trigger a render of the current frame
+  pub fn render(&self) -> Result<()> {
+    let state = self.state.lock().unwrap();
+
+    if let Some(pixels) = &state.pixels {
+      pixels
+        .render()
+        .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to render: {}", e)))?;
+      Ok(())
+    } else {
+      Err(Error::new(
+        Status::GenericFailure,
+        "Overlay not initialized",
+      ))
+    }
+  }
+
+  /// Resize the frame buffer and window
+  pub fn resize(&self, width: u32, height: u32) -> Result<()> {
+    let mut state = self.state.lock().unwrap();
+
+    if let Some(pixels) = &mut state.pixels {
+      pixels
+        .resize_buffer(width, height)
+        .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to resize: {}", e)))?;
       Ok(())
     } else {
       Err(Error::new(
@@ -355,10 +407,7 @@ impl FrameController {
 }
 
 /// Event loop runner with optimized event handling
-pub fn run_event_loop(
-  event_loop: EventLoop<()>,
-  state: Arc<Mutex<WindowState>>,
-) -> ! {
+pub fn run_event_loop(event_loop: EventLoop<()>, state: Arc<Mutex<WindowState>>) -> ! {
   event_loop.run(move |event, _, control_flow| {
     *control_flow = ControlFlow::Wait;
 

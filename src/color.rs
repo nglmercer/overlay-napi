@@ -50,20 +50,90 @@ impl Color {
 }
 
 // Common colors as constants
-pub const COLOR_RED: Color = Color { r: 255, g: 0, b: 0, a: 255 };
-pub const COLOR_GREEN: Color = Color { r: 0, g: 255, b: 0, a: 255 };
-pub const COLOR_BLUE: Color = Color { r: 0, g: 0, b: 255, a: 255 };
-pub const COLOR_BLACK: Color = Color { r: 0, g: 0, b: 0, a: 255 };
-pub const COLOR_WHITE: Color = Color { r: 255, g: 255, b: 255, a: 255 };
-pub const COLOR_YELLOW: Color = Color { r: 255, g: 255, b: 0, a: 255 };
-pub const COLOR_CYAN: Color = Color { r: 0, g: 255, b: 255, a: 255 };
-pub const COLOR_MAGENTA: Color = Color { r: 255, g: 0, b: 255, a: 255 };
-pub const COLOR_GRAY: Color = Color { r: 128, g: 128, b: 128, a: 255 };
-pub const COLOR_DARK_GRAY: Color = Color { r: 64, g: 64, b: 64, a: 255 };
-pub const COLOR_LIGHT_GRAY: Color = Color { r: 192, g: 192, b: 192, a: 255 };
-pub const COLOR_ORANGE: Color = Color { r: 255, g: 165, b: 0, a: 255 };
-pub const COLOR_PINK: Color = Color { r: 255, g: 192, b: 203, a: 255 };
-pub const COLOR_TRANSPARENT: Color = Color { r: 0, g: 0, b: 0, a: 0 };
+pub const COLOR_RED: Color = Color {
+  r: 255,
+  g: 0,
+  b: 0,
+  a: 255,
+};
+pub const COLOR_GREEN: Color = Color {
+  r: 0,
+  g: 255,
+  b: 0,
+  a: 255,
+};
+pub const COLOR_BLUE: Color = Color {
+  r: 0,
+  g: 0,
+  b: 255,
+  a: 255,
+};
+pub const COLOR_BLACK: Color = Color {
+  r: 0,
+  g: 0,
+  b: 0,
+  a: 255,
+};
+pub const COLOR_WHITE: Color = Color {
+  r: 255,
+  g: 255,
+  b: 255,
+  a: 255,
+};
+pub const COLOR_YELLOW: Color = Color {
+  r: 255,
+  g: 255,
+  b: 0,
+  a: 255,
+};
+pub const COLOR_CYAN: Color = Color {
+  r: 0,
+  g: 255,
+  b: 255,
+  a: 255,
+};
+pub const COLOR_MAGENTA: Color = Color {
+  r: 255,
+  g: 0,
+  b: 255,
+  a: 255,
+};
+pub const COLOR_GRAY: Color = Color {
+  r: 128,
+  g: 128,
+  b: 128,
+  a: 255,
+};
+pub const COLOR_DARK_GRAY: Color = Color {
+  r: 64,
+  g: 64,
+  b: 64,
+  a: 255,
+};
+pub const COLOR_LIGHT_GRAY: Color = Color {
+  r: 192,
+  g: 192,
+  b: 192,
+  a: 255,
+};
+pub const COLOR_ORANGE: Color = Color {
+  r: 255,
+  g: 165,
+  b: 0,
+  a: 255,
+};
+pub const COLOR_PINK: Color = Color {
+  r: 255,
+  g: 192,
+  b: 203,
+  a: 255,
+};
+pub const COLOR_TRANSPARENT: Color = Color {
+  r: 0,
+  g: 0,
+  b: 0,
+  a: 0,
+};
 
 // NAPI exports
 #[napi]
@@ -72,33 +142,61 @@ pub fn create_color(r: u8, g: u8, b: u8, a: u8) -> Color {
 }
 
 #[napi]
-pub fn color_red() -> Color { COLOR_RED }
+pub fn color_red() -> Color {
+  COLOR_RED
+}
 #[napi]
-pub fn color_green() -> Color { COLOR_GREEN }
+pub fn color_green() -> Color {
+  COLOR_GREEN
+}
 #[napi]
-pub fn color_blue() -> Color { COLOR_BLUE }
+pub fn color_blue() -> Color {
+  COLOR_BLUE
+}
 #[napi]
-pub fn color_black() -> Color { COLOR_BLACK }
+pub fn color_black() -> Color {
+  COLOR_BLACK
+}
 #[napi]
-pub fn color_white() -> Color { COLOR_WHITE }
+pub fn color_white() -> Color {
+  COLOR_WHITE
+}
 #[napi]
-pub fn color_yellow() -> Color { COLOR_YELLOW }
+pub fn color_yellow() -> Color {
+  COLOR_YELLOW
+}
 #[napi]
-pub fn color_cyan() -> Color { COLOR_CYAN }
+pub fn color_cyan() -> Color {
+  COLOR_CYAN
+}
 #[napi]
-pub fn color_magenta() -> Color { COLOR_MAGENTA }
+pub fn color_magenta() -> Color {
+  COLOR_MAGENTA
+}
 #[napi]
-pub fn color_gray() -> Color { COLOR_GRAY }
+pub fn color_gray() -> Color {
+  COLOR_GRAY
+}
 #[napi]
-pub fn color_dark_gray() -> Color { COLOR_DARK_GRAY }
+pub fn color_dark_gray() -> Color {
+  COLOR_DARK_GRAY
+}
 #[napi]
-pub fn color_light_gray() -> Color { COLOR_LIGHT_GRAY }
+pub fn color_light_gray() -> Color {
+  COLOR_LIGHT_GRAY
+}
 #[napi]
-pub fn color_orange() -> Color { COLOR_ORANGE }
+pub fn color_orange() -> Color {
+  COLOR_ORANGE
+}
 #[napi]
-pub fn color_pink() -> Color { COLOR_PINK }
+pub fn color_pink() -> Color {
+  COLOR_PINK
+}
 #[napi]
-pub fn color_transparent() -> Color { COLOR_TRANSPARENT }
+pub fn color_transparent() -> Color {
+  COLOR_TRANSPARENT
+}
 
 #[napi]
 pub fn color_to_rgba(color: Color) -> Vec<u8> {

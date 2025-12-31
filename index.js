@@ -578,7 +578,7 @@ if (!nativeBinding) {
 module.exports = nativeBinding
 module.exports.Overlay = nativeBinding.Overlay
 module.exports.blendColors = nativeBinding.blendColors
-module.exports.calculateBufferSize = nativeBinding.calculateBufferSize
+module.exports.calculateBufferSizeNapi = nativeBinding.calculateBufferSizeNapi
 module.exports.colorBlack = nativeBinding.colorBlack
 module.exports.colorBlue = nativeBinding.colorBlue
 module.exports.colorCyan = nativeBinding.colorCyan
@@ -604,7 +604,6 @@ module.exports.drawCircle = nativeBinding.drawCircle
 module.exports.drawLine = nativeBinding.drawLine
 module.exports.drawPixel = nativeBinding.drawPixel
 module.exports.fillBufferColor = nativeBinding.fillBufferColor
-module.exports.fillBufferRgba = nativeBinding.fillBufferRgba
 module.exports.lerpColors = nativeBinding.lerpColors
 module.exports.loadImage = nativeBinding.loadImage
 module.exports.WindowLevel = nativeBinding.WindowLevel

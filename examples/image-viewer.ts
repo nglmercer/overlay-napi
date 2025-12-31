@@ -84,13 +84,13 @@ async function main() {
   console.log('🚀 Starting Overlay Image Viewer...')
 
   // Load image data
-  const imageData = loadImageData(imagePath)
+  /*   const imageData = loadImageData(imagePath)
   if (!imageData) {
     console.error('❌ Failed to load image')
     process.exit(1)
-  }
+  } */
 
-  console.log(`✅ Loaded image: ${imageData.width}x${imageData.height}`)
+  //console.log(`imageData`,imageData)
 
   // Create overlay
   console.log('🔧 Creating overlay...')
@@ -100,19 +100,21 @@ async function main() {
     console.log('⚙️  Configuring overlay before initialization...')
 
     // Configure overlay BEFORE starting (this stores the config for initial creation)
-    overlay.setSize(width || imageData.width, height || imageData.height)
+    overlay.setSize(width || 800, height || 600)
     overlay.setPosition(x, y)
     overlay.setTitle(title)
 
     console.log('📋 Configuration:')
     console.log(`   Position: (${x}, ${y})`)
-    console.log(`   Size: ${width || imageData.width}x${height || imageData.height}`)
+    console.log(`   Size: ${width || 800}x${height || 600}`)
     console.log(`   Title: ${title}`)
 
     console.log('🎨 Setting initial frame data...')
 
     // Set the initial frame data BEFORE starting
-    overlay.updateFrame(imageData.data)
+    // Using dummy data for now since we're not loading an image
+    /*     const dummyData = Buffer.alloc(800 * 600 * 4, 0xFF); // White pixels
+    overlay.updateFrame(dummyData); */
 
     console.log('▶️  Starting overlay system...')
     console.log('⚠️  Note: This will create a real transparent overlay window')
@@ -128,11 +130,8 @@ async function main() {
     console.log('✅ Overlay is now visible!')
     console.log('ℹ️  Press Ctrl+C to exit')
   } catch (error) {
-    console.error(`❌ Overlay error: ${error}`)
-    console.error('💡 Make sure you have:')
-    console.error('   - A display server running (X11/Wayland on Linux)')
-    console.error('   - Proper permissions for window creation')
-    console.error('   - Required system dependencies installed')
+    console.error(`error:`, error)
+
     process.exit(1)
   }
 }

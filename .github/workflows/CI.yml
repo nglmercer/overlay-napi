@@ -270,7 +270,9 @@ jobs:
         with:
           image: ${{ steps.docker.outputs.IMAGE }}
           options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
-          run: bun test
+          run: |
+            npm install -g bun
+            bun test
   publish:
     name: Publish
     runs-on: ubuntu-latest

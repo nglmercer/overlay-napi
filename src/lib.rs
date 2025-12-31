@@ -1,5 +1,5 @@
 //! High-performance transparent pixel overlay with Rust backend and Node.js API
-//! 
+//!
 //! This library provides a modular architecture for creating transparent overlay windows
 //! with efficient pixel manipulation and rendering capabilities.
 
@@ -18,12 +18,15 @@ mod types;
 mod window;
 
 // Re-export main types for NAPI compatibility
-pub use color::*;
-pub use types::*;
 pub use buffer::*;
+pub use color::*;
 pub use image::*;
+pub use types::*;
 
-use window::{WindowState, InitialConfig, WindowController, FrameController, create_overlay_window, run_event_loop};
+use window::{
+  create_overlay_window, run_event_loop, FrameController, InitialConfig, WindowController,
+  WindowState,
+};
 
 /// Main overlay structure with optimized architecture
 #[napi]
@@ -40,7 +43,7 @@ impl Overlay {
   pub fn new() -> Self {
     let state = Arc::new(Mutex::new(WindowState::new()));
     let initial_config = Arc::new(Mutex::new(None));
-    
+
     let window_controller = WindowController::new(state.clone());
     let frame_controller = FrameController::new(state.clone());
 
@@ -109,7 +112,7 @@ impl Overlay {
 
     // Run optimized event loop (never returns on most platforms)
     run_event_loop(event_loop, state);
-    
+
     // This point is never reached on most platforms
     #[allow(unreachable_code)]
     Ok(())
@@ -120,7 +123,7 @@ impl Overlay {
   pub fn update_frame(&self, buffer: Buffer) -> Result<()> {
     // Store buffer data for initial configuration
     let buffer_data = buffer.as_ref().to_vec();
-    
+
     // Try to update frame directly first
     match self.frame_controller.update_frame(buffer) {
       Ok(()) => Ok(()),
@@ -130,9 +133,10 @@ impl Overlay {
         if let Some(ref mut config) = *config {
           config.initial_frame_data = Some(buffer_data);
         } else {
-          let mut new_config = InitialConfig::default();
-          new_config.initial_frame_data = Some(buffer_data);
-          *config = Some(new_config);
+          *config = Some(window::InitialConfig {
+            initial_frame_data: Some(buffer_data),
+            ..Default::default()
+          });
         }
         Ok(())
       }
@@ -175,12 +179,13 @@ impl Overlay {
       config.x = x;
       config.y = y;
     } else {
-      let mut new_config = InitialConfig::default();
-      new_config.x = x;
-      new_config.y = y;
-      *config = Some(new_config);
+      *config = Some(window::InitialConfig {
+        x,
+        y,
+        ..Default::default()
+      });
     }
-    
+
     Ok(())
   }
 
@@ -203,12 +208,13 @@ impl Overlay {
       config.width = width;
       config.height = height;
     } else {
-      let mut new_config = InitialConfig::default();
-      new_config.width = width;
-      new_config.height = height;
-      *config = Some(new_config);
+      *config = Some(window::InitialConfig {
+        width,
+        height,
+        ..Default::default()
+      });
     }
-    
+
     Ok(())
   }
 
@@ -228,13 +234,14 @@ impl Overlay {
     // Store for initial configuration
     let mut config = self.initial_config.lock().unwrap();
     if let Some(ref mut config) = *config {
-      config.title = title;
+      config.title = title.clone();
     } else {
-      let mut new_config = InitialConfig::default();
-      new_config.title = title;
-      *config = Some(new_config);
+      *config = Some(window::InitialConfig {
+        title,
+        ..Default::default()
+      });
     }
-    
+
     Ok(())
   }
 
@@ -250,11 +257,12 @@ impl Overlay {
     if let Some(ref mut config) = *config {
       config.window_level = level;
     } else {
-      let mut new_config = InitialConfig::default();
-      new_config.window_level = level;
-      *config = Some(new_config);
+      *config = Some(window::InitialConfig {
+        window_level: level,
+        ..Default::default()
+      });
     }
-    
+
     Ok(())
   }
 
@@ -278,7 +286,27 @@ impl Overlay {
     height: u32,
     color: Color,
   ) -> Result<()> {
-    self.frame_controller.draw_rectangle(x, y, width, height, &color)
+    self
+      .frame_controller
+      .draw_rectangle(x, y, width, height, &color)
+  }
+
+  /// Get the current frame buffer for advanced manipulations
+  #[napi]
+  pub fn get_frame_buffer(&self) -> Result<Buffer> {
+    self.frame_controller.get_frame_buffer()
+  }
+
+  /// Manually trigger a render of the current frame
+  #[napi]
+  pub fn render(&self) -> Result<()> {
+    self.frame_controller.render()
+  }
+
+  /// Resize the frame buffer and window
+  #[napi]
+  pub fn resize(&self, width: u32, height: u32) -> Result<()> {
+    self.frame_controller.resize(width, height)
   }
 }
 
