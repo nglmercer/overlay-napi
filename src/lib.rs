@@ -381,10 +381,6 @@ impl Overlay {
     }
 }
 
-#[napi]
-pub fn plus_100(input: u32) -> u32 {
-    input + 100
-}
 
 #[napi]
 pub fn create_color(r: u8, g: u8, b: u8, a: u8) -> Color {
@@ -447,12 +443,6 @@ mod tests {
         assert!(state.pixels.is_none());
     }
 
-    #[test]
-    fn test_plus_100_function() {
-        assert_eq!(plus_100(0), 100);
-        assert_eq!(plus_100(50), 150);
-        assert_eq!(plus_100(100), 200);
-    }
 
     #[test]
     fn test_frame_size_calculation() {

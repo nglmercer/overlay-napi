@@ -49,25 +49,160 @@ for (let i = 0; i < buffer.length; i += 4) {
 overlay.updateFrame(buffer);
 ```
 
+### Advanced Example with Window Controls
+
+```javascript
+const { Overlay, WindowLevel, createColor, color_red, color_blue } = require('overlay-napi');
+
+// Create a new overlay instance
+const overlay = new Overlay();
+
+// Start the overlay window
+overlay.start();
+
+// Set window properties
+overlay.setTitle('My Overlay');
+overlay.setWindowLevel(WindowLevel.AlwaysOnTop);
+overlay.setPosition(100, 100);
+overlay.setSize(400, 300);
+
+// Show the window
+overlay.show();
+
+// Clear the frame with a blue background
+overlay.clearFrame(color_blue());
+
+// Draw a red rectangle
+overlay.drawRectangle(50, 50, 100, 100, color_red());
+
+// Create a custom color
+const customColor = createColor(255, 128, 0, 255); // Orange
+overlay.drawRectangle(200, 100, 80, 60, customColor);
+
+// Get window information
+const position = overlay.getPosition();
+const size = overlay.getSize();
+console.log(`Window at (${position.x}, ${position.y}), size: ${size.width}x${size.height}`);
+
+// Check if window is visible
+if (overlay.isVisible()) {
+    console.log('Window is visible');
+}
+
+// Request a redraw
+overlay.requestRedraw();
+```
+
 ### API Reference
 
-#### `new Overlay()`
+#### Core Methods
+
+##### `new Overlay()`
 Creates a new overlay instance.
 
-#### `start()`
+##### `start()`
 Starts the overlay window and event loop. **Note**: This method blocks the current thread as it runs the window event loop.
 
-#### `updateFrame(buffer: Buffer)`
+##### `updateFrame(buffer: Buffer)`
 Updates the overlay with new pixel data.
 
 - `buffer`: A Node.js Buffer containing RGBA pixel data
 - The buffer size must match the overlay frame size (width × height × 4 bytes)
 
-#### `getFrameSize()`
+##### `getFrameSize()`
 Returns the current frame size as `[width, height]`.
 
-#### `plus_100(input: number): number`
-A utility function that adds 100 to the input number (for testing purposes).
+#### Window Control Methods
+
+##### `show()`
+Shows the overlay window.
+
+##### `hide()`
+Hides the overlay window.
+
+##### `setPosition(x: number, y: number)`
+Sets the window position on screen.
+
+##### `getPosition()`
+Returns the current window position as `{x, y}`.
+
+##### `setSize(width: number, height: number)`
+Sets the window size.
+
+##### `getSize()`
+Returns the current window size as `{width, height}`.
+
+##### `setTitle(title: string)`
+Sets the window title.
+
+##### `setWindowLevel(level: WindowLevel)`
+Sets the window level (Normal, AlwaysOnTop, AlwaysOnBottom).
+
+##### `requestRedraw()`
+Requests a window redraw.
+
+##### `isVisible()`
+Returns whether the window is currently visible.
+
+#### Rendering Methods
+
+##### `clearFrame(color: Color)`
+Clears the entire frame with a solid color.
+
+##### `drawRectangle(x: number, y: number, width: number, height: number, color: Color)`
+Draws a filled rectangle at the specified position.
+
+#### Utility Functions
+
+##### `createColor(r: number, g: number, b: number, a: number): Color`
+Creates a new Color object.
+
+##### `createPosition(x: number, y: number): WindowPosition`
+Creates a new WindowPosition object.
+
+##### `createSize(width: number, height: number): WindowSize`
+Creates a new WindowSize object.
+
+##### Predefined Colors
+- `color_red()`: Returns red color (255, 0, 0, 255)
+- `color_green()`: Returns green color (0, 255, 0, 255)
+- `color_blue()`: Returns blue color (0, 0, 255, 255)
+- `color_black()`: Returns black color (0, 0, 0, 255)
+- `color_white()`: Returns white color (255, 255, 255, 255)
+- `color_transparent()`: Returns transparent color (0, 0, 0, 0)
+
+### Types and Enums
+
+#### `WindowLevel` Enum
+- `WindowLevel.Normal`: Normal window level
+- `WindowLevel.AlwaysOnTop`: Window stays on top of other windows
+- `WindowLevel.AlwaysOnBottom`: Window stays behind other windows
+
+#### `Color` Object
+```javascript
+{
+    r: number, // Red component (0-255)
+    g: number, // Green component (0-255)
+    b: number, // Blue component (0-255)
+    a: number  // Alpha component (0-255)
+}
+```
+
+#### `WindowPosition` Object
+```javascript
+{
+    x: number, // X coordinate
+    y: number  // Y coordinate
+}
+```
+
+#### `WindowSize` Object
+```javascript
+{
+    width: number,  // Width in pixels
+    height: number  // Height in pixels
+}
+```
 
 ## Development
 

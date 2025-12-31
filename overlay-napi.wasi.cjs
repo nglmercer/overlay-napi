@@ -118,5 +118,4 @@ module.exports.colorWhite = __napiModule.exports.colorWhite
 module.exports.createColor = __napiModule.exports.createColor
 module.exports.createPosition = __napiModule.exports.createPosition
 module.exports.createSize = __napiModule.exports.createSize
-module.exports.plus100 = __napiModule.exports.plus100
 module.exports.WindowLevel = __napiModule.exports.WindowLevel

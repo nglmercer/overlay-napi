@@ -44,8 +44,6 @@ export declare function createPosition(x: number, y: number): WindowPosition
 
 export declare function createSize(width: number, height: number): WindowSize
 
-export declare function plus100(input: number): number
-
 export declare const enum WindowLevel {
   Normal = 0,
   AlwaysOnTop = 1,

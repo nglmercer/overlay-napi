@@ -66,5 +66,4 @@ export const colorWhite = __napiModule.exports.colorWhite
 export const createColor = __napiModule.exports.createColor
 export const createPosition = __napiModule.exports.createPosition
 export const createSize = __napiModule.exports.createSize
-export const plus100 = __napiModule.exports.plus100
 export const WindowLevel = __napiModule.exports.WindowLevel

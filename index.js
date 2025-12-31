@@ -586,5 +586,4 @@ module.exports.colorWhite = nativeBinding.colorWhite
 module.exports.createColor = nativeBinding.createColor
 module.exports.createPosition = nativeBinding.createPosition
 module.exports.createSize = nativeBinding.createSize
-module.exports.plus100 = nativeBinding.plus100
 module.exports.WindowLevel = nativeBinding.WindowLevel
