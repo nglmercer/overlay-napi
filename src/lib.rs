@@ -102,10 +102,10 @@ impl OverlayState {
 fn create_overlay_window_with_config(
   event_loop: &EventLoop<()>,
   initial_config: Arc<Mutex<Option<InitialConfig>>>,
+  initial_frame_data: Option<Vec<u8>>,
 ) -> Result<(Arc<Window>, Pixels)> {
   // Get initial configuration if available
   let config = initial_config.lock().unwrap();
-
   let (width, height, title, x, y, window_level) = if let Some(ref config) = *config {
     (
       config.width,
@@ -125,6 +125,9 @@ fn create_overlay_window_with_config(
       WindowLevel::AlwaysOnTop,
     )
   };
+  
+  // Drop the config lock to avoid borrowing issues
+  drop(config);
 
   // Create transparent overlay window with configuration
   let mut window_builder = WindowBuilder::new()
@@ -175,6 +178,7 @@ struct InitialConfig {
   y: i32,
   title: String,
   window_level: WindowLevel,
+  initial_frame_data: Option<Vec<u8>>,
 }
 
 #[napi]
@@ -203,18 +207,42 @@ impl Overlay {
   pub fn start(&mut self) -> Result<()> {
     let state = self.state.clone();
     let initial_config = self.initial_config.clone();
+    
+    // Get initial frame data if available
+    let initial_frame_data = {
+      let config = initial_config.lock().unwrap();
+      if let Some(ref config) = *config {
+        config.initial_frame_data.clone()
+      } else {
+        None
+      }
+    };
 
     // Create event loop and window in the same thread
     let event_loop = EventLoopBuilder::new().build();
 
+    // Clone the frame data before moving it
+    let frame_data_clone = initial_frame_data.clone();
+    
     // Create window and pixels with initial configuration
-    let (window, pixels) = create_overlay_window_with_config(&event_loop, initial_config)?;
+    let (window, pixels) = create_overlay_window_with_config(&event_loop, initial_config, initial_frame_data)?;
 
-    // Store state
+    // Store state and apply initial frame data if available
     {
       let mut state_guard = state.lock().unwrap();
       state_guard.window = Some(window.clone());
       state_guard.pixels = Some(pixels);
+    }
+    
+    // Apply initial frame data if provided (outside the block to avoid borrowing issues)
+    if let Some(ref frame_data) = frame_data_clone {
+      let mut state_guard = state.lock().unwrap();
+      if let Some(pixels) = &mut state_guard.pixels {
+        let frame = pixels.frame_mut();
+        if frame_data.len() == frame.len() {
+          frame.copy_from_slice(frame_data);
+        }
+      }
     }
 
     // Run event loop
@@ -285,10 +313,23 @@ impl Overlay {
       frame.copy_from_slice(buffer_data);
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      // Store for initial configuration
+      let mut config = self.initial_config.lock().unwrap();
+      let buffer_data = buffer.as_ref().to_vec();
+      if let Some(ref mut config) = *config {
+        config.initial_frame_data = Some(buffer_data);
+      } else {
+        *config = Some(InitialConfig {
+          width: 800,
+          height: 600,
+          x: 100,
+          y: 100,
+          title: "Overlay NAPI".to_string(),
+          window_level: WindowLevel::AlwaysOnTop,
+          initial_frame_data: Some(buffer_data),
+        });
+      }
+      Ok(())
     }
   }
 
@@ -362,6 +403,7 @@ impl Overlay {
           y,
           title: "Overlay NAPI".to_string(),
           window_level: WindowLevel::AlwaysOnTop,
+          initial_frame_data: None,
         });
       }
       Ok(())
@@ -409,6 +451,7 @@ impl Overlay {
           y: 100,
           title: "Overlay NAPI".to_string(),
           window_level: WindowLevel::AlwaysOnTop,
+          initial_frame_data: None,
         });
       }
       Ok(())
@@ -453,6 +496,7 @@ impl Overlay {
           y: 100,
           title,
           window_level: WindowLevel::AlwaysOnTop,
+          initial_frame_data: None,
         });
       }
       Ok(())
@@ -479,6 +523,7 @@ impl Overlay {
           y: 100,
           title: "Overlay NAPI".to_string(),
           window_level: level,
+          initial_frame_data: None,
         });
       }
       Ok(())
@@ -878,6 +923,33 @@ pub fn draw_circle(
   }
 
   Ok(Buffer::from(new_data))
+}
+
+#[napi(object)]
+pub struct DecodedImage {
+  pub data: Buffer,
+  pub width: u32,
+  pub height: u32,
+}
+
+#[napi]
+pub fn load_image(path: String) -> Result<DecodedImage> {
+  let img = image::open(path).map_err(|e| {
+    Error::new(
+      Status::GenericFailure,
+      format!("Failed to open image: {}", e),
+    )
+  })?;
+
+  let img = img.to_rgba8();
+  let (width, height) = img.dimensions();
+  let data = img.into_raw();
+
+  Ok(DecodedImage {
+    data: Buffer::from(data),
+    width,
+    height,
+  })
 }
 
 #[cfg(test)]

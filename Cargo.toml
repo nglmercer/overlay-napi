@@ -10,11 +10,12 @@ version = "0.1.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi        = "3.0.0"
-napi-derive = "3.0.0"
-winit       = "0.28"
-pixels      = "0.12"
+image             = "0.24"
+napi              = "3.0.0"
+napi-derive       = "3.0.0"
+pixels            = "0.12"
 raw-window-handle = "0.5"
+winit             = "0.28"
 
 [build-dependencies]
 napi-build = "2"
