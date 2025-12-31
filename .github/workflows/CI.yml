@@ -31,7 +31,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'bun'
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Install
         uses: dtolnay/rust-toolchain@stable
@@ -46,9 +50,11 @@ jobs:
 
       - name: Cargo fmt
         run: cargo fmt -- --check
+        working-directory: .
 
       - name: Clippy
         run: cargo clippy
+        working-directory: .
   build:
     strategy:
       fail-fast: false
@@ -101,7 +107,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'bun'
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -224,8 +234,12 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: 'bun'
           architecture: ${{ matrix.settings.architecture }}
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install dependencies
         run: bun install
       - name: Download artifacts
@@ -261,7 +275,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ matrix.node }}
-          cache: 'bun'
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Output docker params
         id: docker
         run: |
@@ -316,7 +334,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'bun'
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install dependencies
         run: |
           bun install
@@ -350,7 +372,11 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'bun'
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - name: Install dependencies
         run: bun install
       - name: create npm dirs

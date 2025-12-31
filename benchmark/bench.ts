@@ -11,7 +11,6 @@ import {
   colorGreen,
   createPosition,
   createSize,
-  type Color 
 } from '../index.js'
 
 // Mock frame buffer operations for benchmarking
