@@ -72,9 +72,17 @@ export declare function createRgbaBuffer(width: number, height: number): Buffer
 
 export declare function createSize(width: number, height: number): WindowSize
 
-export declare function drawCircle(buffer: Buffer, cx: number, cy: number, radius: number, bufferWidth: number, bufferHeight: number, color: Color): Buffer
+export declare function drawCircle(
+  buffer: Buffer,
+  cx: number,
+  cy: number,
+  radius: number,
+  bufferWidth: number,
+  bufferHeight: number,
+  color: Color,
+): Buffer
 
-export declare function drawLine(buffer: Buffer, x1: number, y1: number, x2: number, y2: number, width: number, height: number, color: Color): Buffer
+export declare function drawLine(buffer: Buffer, params: LineParams): Buffer
 
 export declare function drawPixel(buffer: Buffer, x: number, y: number, width: number, color: Color): Buffer
 
@@ -84,10 +92,20 @@ export declare function fillBufferRgba(buffer: Buffer, r: number, g: number, b: 
 
 export declare function lerpColors(color1: Color, color2: Color, t: number): Color
 
+export interface LineParams {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  bufferWidth: number
+  bufferHeight: number
+  color: Color
+}
+
 export declare const enum WindowLevel {
   Normal = 0,
   AlwaysOnTop = 1,
-  AlwaysOnBottom = 2
+  AlwaysOnBottom = 2,
 }
 
 export interface WindowPosition {
