@@ -113,7 +113,8 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 
-
+#temp 
+examples/*.png
 #Added by cargo
 
 /target

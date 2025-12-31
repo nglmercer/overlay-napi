@@ -90,9 +90,6 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: bun run build -- --target aarch64-pc-windows-msvc
-          - host: ubuntu-latest
-            target: wasm32-wasip1-threads
-            build: bun run build -- --target wasm32-wasip1-threads
     name: stable - ${{ matrix.settings.target }} - node@22
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -150,7 +147,6 @@ jobs:
           name: bindings-${{ matrix.settings.target }}
           path: |
             overlay-napi.*.node
-            overlay-napi.*.wasm
           if-no-files-found: error
   build-freebsd:
     runs-on: ubuntu-latest
@@ -323,39 +319,6 @@ jobs:
           image: ${{ steps.docker.outputs.IMAGE }}
           options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
           run: bun test
-  test-wasi:
-    name: Test WASI target
-    needs:
-      - build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-      - name: Setup node
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-      - name: Install dependencies
-        run: |
-          bun install
-        env:
-          HUSKY: 0
-      - name: Download artifacts
-        uses: actions/download-artifact@v7
-        with:
-          name: bindings-wasm32-wasip1-threads
-          path: .
-      - name: List packages
-        run: ls -R .
-        shell: bash
-      - name: Test bindings
-        run: bun test
-        env:
-          NAPI_RS_FORCE_WASI: 1
   publish:
     name: Publish
     runs-on: ubuntu-latest
@@ -367,7 +330,6 @@ jobs:
       - build-freebsd
       - test-macOS-windows-binding
       - test-linux-binding
-      - test-wasi
     steps:
       - uses: actions/checkout@v6
       - name: Setup node

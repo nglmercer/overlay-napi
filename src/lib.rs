@@ -10,6 +10,7 @@ use winit::event_loop::{ControlFlow, EventLoop, EventLoopBuilder};
 use winit::window::{Window, WindowBuilder, WindowLevel as WinitWindowLevel};
 
 #[napi]
+#[derive(Clone)]
 pub enum WindowLevel {
   Normal,
   AlwaysOnTop,
@@ -98,22 +99,52 @@ impl OverlayState {
   }
 }
 
-fn create_overlay_window(event_loop: &EventLoop<()>) -> Result<(Arc<Window>, Pixels)> {
-  // Create transparent overlay window
-  let window = Arc::new(
-    WindowBuilder::new()
-      .with_transparent(true)
-      .with_decorations(false)
-      .with_window_level(WinitWindowLevel::AlwaysOnTop)
-      .with_title("Overlay NAPI")
-      .build(event_loop)
-      .map_err(|e| {
-        Error::new(
-          Status::GenericFailure,
-          format!("Failed to create window: {}", e),
-        )
-      })?,
-  );
+fn create_overlay_window_with_config(
+  event_loop: &EventLoop<()>,
+  initial_config: Arc<Mutex<Option<InitialConfig>>>,
+) -> Result<(Arc<Window>, Pixels)> {
+  // Get initial configuration if available
+  let config = initial_config.lock().unwrap();
+
+  let (width, height, title, x, y, window_level) = if let Some(ref config) = *config {
+    (
+      config.width,
+      config.height,
+      config.title.clone(),
+      config.x,
+      config.y,
+      config.window_level.clone(),
+    )
+  } else {
+    (
+      800,
+      600,
+      "Overlay NAPI".to_string(),
+      100,
+      100,
+      WindowLevel::AlwaysOnTop,
+    )
+  };
+
+  // Create transparent overlay window with configuration
+  let mut window_builder = WindowBuilder::new()
+    .with_transparent(true)
+    .with_decorations(false)
+    .with_window_level(window_level.into())
+    .with_title(&title)
+    .with_inner_size(LogicalSize::new(width, height));
+
+  // Set position if specified
+  if x != 0 || y != 0 {
+    window_builder = window_builder.with_position(LogicalPosition::new(x, y));
+  }
+
+  let window = Arc::new(window_builder.build(event_loop).map_err(|e| {
+    Error::new(
+      Status::GenericFailure,
+      format!("Failed to create window: {}", e),
+    )
+  })?);
 
   // Get window size
   let window_size = window.inner_size();
@@ -134,6 +165,16 @@ fn create_overlay_window(event_loop: &EventLoop<()>) -> Result<(Arc<Window>, Pix
 #[napi]
 pub struct Overlay {
   state: Arc<Mutex<OverlayState>>,
+  initial_config: Arc<Mutex<Option<InitialConfig>>>,
+}
+
+struct InitialConfig {
+  width: u32,
+  height: u32,
+  x: i32,
+  y: i32,
+  title: String,
+  window_level: WindowLevel,
 }
 
 #[napi]
@@ -141,9 +182,11 @@ impl Overlay {
   #[napi(constructor)]
   pub fn new() -> Self {
     let state = Arc::new(Mutex::new(OverlayState::new()));
+    let initial_config = Arc::new(Mutex::new(None));
 
     Self {
       state: state.clone(),
+      initial_config: initial_config.clone(),
     }
   }
 }
@@ -159,12 +202,13 @@ impl Overlay {
   #[napi]
   pub fn start(&mut self) -> Result<()> {
     let state = self.state.clone();
+    let initial_config = self.initial_config.clone();
 
     // Create event loop and window in the same thread
     let event_loop = EventLoopBuilder::new().build();
 
-    // Create window and pixels
-    let (window, pixels) = create_overlay_window(&event_loop)?;
+    // Create window and pixels with initial configuration
+    let (window, pixels) = create_overlay_window_with_config(&event_loop, initial_config)?;
 
     // Store state
     {
@@ -305,10 +349,22 @@ impl Overlay {
       window.set_outer_position(LogicalPosition::new(x, y));
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      // Store for initial configuration
+      let mut config = self.initial_config.lock().unwrap();
+      if let Some(ref mut config) = *config {
+        config.x = x;
+        config.y = y;
+      } else {
+        *config = Some(InitialConfig {
+          width: 800,
+          height: 600,
+          x,
+          y,
+          title: "Overlay NAPI".to_string(),
+          window_level: WindowLevel::AlwaysOnTop,
+        });
+      }
+      Ok(())
     }
   }
 
@@ -340,10 +396,22 @@ impl Overlay {
       window.set_inner_size(LogicalSize::new(width, height));
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      // Store for initial configuration
+      let mut config = self.initial_config.lock().unwrap();
+      if let Some(ref mut config) = *config {
+        config.width = width;
+        config.height = height;
+      } else {
+        *config = Some(InitialConfig {
+          width,
+          height,
+          x: 100,
+          y: 100,
+          title: "Overlay NAPI".to_string(),
+          window_level: WindowLevel::AlwaysOnTop,
+        });
+      }
+      Ok(())
     }
   }
 
@@ -373,10 +441,21 @@ impl Overlay {
       window.set_title(&title);
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      // Store for initial configuration
+      let mut config = self.initial_config.lock().unwrap();
+      if let Some(ref mut config) = *config {
+        config.title = title;
+      } else {
+        *config = Some(InitialConfig {
+          width: 800,
+          height: 600,
+          x: 100,
+          y: 100,
+          title,
+          window_level: WindowLevel::AlwaysOnTop,
+        });
+      }
+      Ok(())
     }
   }
 
@@ -388,10 +467,21 @@ impl Overlay {
       window.set_window_level(level.into());
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      // Store for initial configuration
+      let mut config = self.initial_config.lock().unwrap();
+      if let Some(ref mut config) = *config {
+        config.window_level = level;
+      } else {
+        *config = Some(InitialConfig {
+          width: 800,
+          height: 600,
+          x: 100,
+          y: 100,
+          title: "Overlay NAPI".to_string(),
+          window_level: level,
+        });
+      }
+      Ok(())
     }
   }
 
