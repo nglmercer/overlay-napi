@@ -1,5 +1,6 @@
 import { Bench } from 'tinybench'
 import { Buffer } from 'buffer'
+import type { Task } from 'tinybench'
 
 // Import overlay functions - we'll need to create a mock overlay for benchmarking
 // since the actual overlay requires a window system
@@ -9,7 +10,8 @@ import {
   colorBlue, 
   colorGreen,
   createPosition,
-  createSize 
+  createSize,
+  type Color 
 } from '../index.js'
 
 // Mock frame buffer operations for benchmarking
@@ -124,12 +126,11 @@ b.add('JavaScript Uint8Array allocation (800x600 RGBA)', () => {
 // Color manipulation benchmark
 b.add('Native color to RGBA conversion', () => {
   const color = createColor(128, 64, 192, 255)
-  // Simulate RGBA conversion (would be internal in native code)
-  return [color.r, color.g, color.b, color.a]
+  return [color.r, color.g, color.b, color.a] as [number, number, number, number]
 })
 
 b.add('JavaScript color array creation', () => {
-  return [128, 64, 192, 255]
+  return [128, 64, 192, 255] as [number, number, number, number]
 })
 
 console.log('Running overlay-napi benchmarks...\n')
@@ -143,23 +144,23 @@ console.log('\n--- Performance Analysis ---')
 console.log(`Frame size: ${FRAME_WIDTH}x${FRAME_HEIGHT} (${FRAME_SIZE} bytes)`)
 console.log(`Total pixels: ${FRAME_WIDTH * FRAME_HEIGHT}`)
 
-const fastest = b.tasks.reduce((prev: any, current: any) => {
-  const prevMean = prev.result && 'mean' in prev.result ? prev.result.mean : Infinity
-  const currentMean = current.result && 'mean' in current.result ? current.result.mean : Infinity
+const fastest = b.tasks.reduce((prev: Task, current: Task) => {
+  const prevMean = 'mean' in prev.result ? (prev.result.mean as number) : Infinity
+  const currentMean = 'mean' in current.result ? (current.result.mean as number) : Infinity
   return prevMean < currentMean ? prev : current
 })
 
-const slowest = b.tasks.reduce((prev: any, current: any) => {
-  const prevMean = prev.result && 'mean' in prev.result ? prev.result.mean : 0
-  const currentMean = current.result && 'mean' in current.result ? current.result.mean : 0
+const slowest = b.tasks.reduce((prev: Task, current: Task) => {
+  const prevMean = 'mean' in prev.result ? (prev.result.mean as number) : 0
+  const currentMean = 'mean' in current.result ? (current.result.mean as number) : 0
   return prevMean > currentMean ? prev : current
 })
 
 if (fastest.result && slowest.result) {
   console.log(`\nFastest operation: ${fastest.name}`)
   console.log(`Slowest operation: ${slowest.name}`)
-  const slowestMean = (slowest.result as any).mean || 0
-  const fastestMean = (fastest.result as any).mean || 1
+  const slowestMean = 'mean' in slowest.result ? (slowest.result.mean as number) : 0
+  const fastestMean = 'mean' in fastest.result ? (fastest.result.mean as number) : 1
   console.log(`Performance ratio: ${(slowestMean / fastestMean).toFixed(2)}x`)
 }
 

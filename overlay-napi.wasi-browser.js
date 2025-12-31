@@ -57,13 +57,33 @@ const {
 })
 export default __napiModule.exports
 export const Overlay = __napiModule.exports.Overlay
+export const blendColors = __napiModule.exports.blendColors
+export const calculateBufferSize = __napiModule.exports.calculateBufferSize
 export const colorBlack = __napiModule.exports.colorBlack
 export const colorBlue = __napiModule.exports.colorBlue
+export const colorCyan = __napiModule.exports.colorCyan
+export const colorDarkGray = __napiModule.exports.colorDarkGray
+export const colorGray = __napiModule.exports.colorGray
 export const colorGreen = __napiModule.exports.colorGreen
+export const colorLightGray = __napiModule.exports.colorLightGray
+export const colorMagenta = __napiModule.exports.colorMagenta
+export const colorOrange = __napiModule.exports.colorOrange
+export const colorPink = __napiModule.exports.colorPink
 export const colorRed = __napiModule.exports.colorRed
+export const colorToHex = __napiModule.exports.colorToHex
+export const colorToRgba = __napiModule.exports.colorToRgba
+export const colorToRgbHex = __napiModule.exports.colorToRgbHex
 export const colorTransparent = __napiModule.exports.colorTransparent
 export const colorWhite = __napiModule.exports.colorWhite
+export const colorYellow = __napiModule.exports.colorYellow
 export const createColor = __napiModule.exports.createColor
 export const createPosition = __napiModule.exports.createPosition
+export const createRgbaBuffer = __napiModule.exports.createRgbaBuffer
 export const createSize = __napiModule.exports.createSize
+export const drawCircle = __napiModule.exports.drawCircle
+export const drawLine = __napiModule.exports.drawLine
+export const drawPixel = __napiModule.exports.drawPixel
+export const fillBufferColor = __napiModule.exports.fillBufferColor
+export const fillBufferRgba = __napiModule.exports.fillBufferRgba
+export const lerpColors = __napiModule.exports.lerpColors
 export const WindowLevel = __napiModule.exports.WindowLevel

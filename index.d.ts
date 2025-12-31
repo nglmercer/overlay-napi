@@ -19,6 +19,10 @@ export declare class Overlay {
   drawRectangle(x: number, y: number, width: number, height: number, color: Color): void
 }
 
+export declare function blendColors(foreground: Color, background: Color): Color
+
+export declare function calculateBufferSize(width: number, height: number): number
+
 export interface Color {
   r: number
   g: number
@@ -30,19 +34,55 @@ export declare function colorBlack(): Color
 
 export declare function colorBlue(): Color
 
+export declare function colorCyan(): Color
+
+export declare function colorDarkGray(): Color
+
+export declare function colorGray(): Color
+
 export declare function colorGreen(): Color
 
+export declare function colorLightGray(): Color
+
+export declare function colorMagenta(): Color
+
+export declare function colorOrange(): Color
+
+export declare function colorPink(): Color
+
 export declare function colorRed(): Color
+
+export declare function colorToHex(color: Color): string
+
+export declare function colorToRgba(color: Color): Array<number>
+
+export declare function colorToRgbHex(color: Color): string
 
 export declare function colorTransparent(): Color
 
 export declare function colorWhite(): Color
 
+export declare function colorYellow(): Color
+
 export declare function createColor(r: number, g: number, b: number, a: number): Color
 
 export declare function createPosition(x: number, y: number): WindowPosition
 
+export declare function createRgbaBuffer(width: number, height: number): Buffer
+
 export declare function createSize(width: number, height: number): WindowSize
+
+export declare function drawCircle(buffer: Buffer, cx: number, cy: number, radius: number, bufferWidth: number, bufferHeight: number, color: Color): Buffer
+
+export declare function drawLine(buffer: Buffer, x1: number, y1: number, x2: number, y2: number, width: number, height: number, color: Color): Buffer
+
+export declare function drawPixel(buffer: Buffer, x: number, y: number, width: number, color: Color): Buffer
+
+export declare function fillBufferColor(buffer: Buffer, color: Color): Buffer
+
+export declare function fillBufferRgba(buffer: Buffer, r: number, g: number, b: number, a: number): void
+
+export declare function lerpColors(color1: Color, color2: Color, t: number): Color
 
 export declare const enum WindowLevel {
   Normal = 0,

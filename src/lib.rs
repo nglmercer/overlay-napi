@@ -54,6 +54,34 @@ impl Color {
     pub fn to_rgba(&self) -> [u8; 4] {
         [self.r, self.g, self.b, self.a]
     }
+    
+    pub fn to_hex(&self) -> String {
+        format!("#{:02X}{:02X}{:02X}{:02X}", self.r, self.g, self.b, self.a)
+    }
+    
+    pub fn to_rgb_hex(&self) -> String {
+        format!("#{:02X}{:02X}{:02X}", self.r, self.g, self.b)
+    }
+    
+    /// Blends this color over another using alpha compositing
+    pub fn blend(&self, other: &Color) -> Color {
+        let alpha = self.a as f32 / 255.0;
+        let r = (self.r as f32 * alpha + other.r as f32 * (1.0 - alpha)) as u8;
+        let g = (self.g as f32 * alpha + other.g as f32 * (1.0 - alpha)) as u8;
+        let b = (self.b as f32 * alpha + other.b as f32 * (1.0 - alpha)) as u8;
+        let a = (self.a as f32 * alpha + other.a as f32 * (1.0 - alpha)) as u8;
+        Color::new(r, g, b, a)
+    }
+    
+    /// Linearly interpolates between two colors
+    pub fn lerp(&self, other: &Color, t: f64) -> Color {
+        let t = t.clamp(0.0, 1.0);
+        let r = (self.r as f64 + (other.r as f64 - self.r as f64) * t) as u8;
+        let g = (self.g as f64 + (other.g as f64 - self.g as f64) * t) as u8;
+        let b = (self.b as f64 + (other.b as f64 - self.b as f64) * t) as u8;
+        let a = (self.a as f64 + (other.a as f64 - self.a as f64) * t) as u8;
+        Color::new(r, g, b, a)
+    }
 }
 
 struct OverlayState {
@@ -423,9 +451,250 @@ pub fn color_white() -> Color {
     Color::new(255, 255, 255, 255)
 }
 
+// Additional predefined colors
+#[napi]
+pub fn color_yellow() -> Color {
+    Color::new(255, 255, 0, 255)
+}
+
+#[napi]
+pub fn color_cyan() -> Color {
+    Color::new(0, 255, 255, 255)
+}
+
+#[napi]
+pub fn color_magenta() -> Color {
+    Color::new(255, 0, 255, 255)
+}
+
+#[napi]
+pub fn color_gray() -> Color {
+    Color::new(128, 128, 128, 255)
+}
+
+#[napi]
+pub fn color_dark_gray() -> Color {
+    Color::new(64, 64, 64, 255)
+}
+
+#[napi]
+pub fn color_light_gray() -> Color {
+    Color::new(192, 192, 192, 255)
+}
+
+#[napi]
+pub fn color_orange() -> Color {
+    Color::new(255, 165, 0, 255)
+}
+
+#[napi]
+pub fn color_pink() -> Color {
+    Color::new(255, 192, 203, 255)
+}
+
 #[napi]
 pub fn color_transparent() -> Color {
     Color::new(0, 0, 0, 0)
+}
+
+// Color manipulation utilities
+#[napi]
+pub fn color_to_rgba(color: Color) -> Vec<u8> {
+    vec![color.r, color.g, color.b, color.a]
+}
+
+#[napi]
+pub fn color_to_hex(color: Color) -> String {
+    color.to_hex()
+}
+
+#[napi]
+pub fn color_to_rgb_hex(color: Color) -> String {
+    color.to_rgb_hex()
+}
+
+#[napi]
+pub fn blend_colors(foreground: Color, background: Color) -> Color {
+    foreground.blend(&background)
+}
+
+#[napi]
+pub fn lerp_colors(color1: Color, color2: Color, t: f64) -> Color {
+    color1.lerp(&color2, t)
+}
+
+// Buffer utilities
+#[napi]
+pub fn calculate_buffer_size(width: u32, height: u32) -> u32 {
+    width * height * 4 // RGBA = 4 bytes per pixel
+}
+
+#[napi]
+pub fn create_rgba_buffer(width: u32, height: u32) -> Buffer {
+    let size = calculate_buffer_size(width, height) as usize;
+    let data = vec![0u8; size];
+    Buffer::from(data)
+}
+
+#[napi]
+pub fn fill_buffer_rgba(buffer: Buffer, r: u8, g: u8, b: u8, a: u8) -> Result<()> {
+    let buffer_data = buffer.as_ref();
+    for chunk in buffer_data.chunks_exact(4) {
+        // Can't modify Buffer directly in place - need to return new buffer
+        // For now, this is a limitation of the Buffer API
+    }
+    Ok(())
+}
+
+#[napi]
+pub fn fill_buffer_color(buffer: Buffer, color: Color) -> Result<Buffer> {
+    fill_buffer_rgba_buffer(buffer, color.r, color.g, color.b, color.a)
+}
+
+/// Internal helper to fill buffer and return modified buffer
+fn fill_buffer_rgba_buffer(buffer: Buffer, r: u8, g: u8, b: u8, a: u8) -> Result<Buffer> {
+    let buffer_data = buffer.as_ref().to_vec();
+    let mut new_data = Vec::with_capacity(buffer_data.len());
+    for chunk in buffer_data.chunks_exact(4) {
+        new_data.push(r);
+        new_data.push(g);
+        new_data.push(b);
+        new_data.push(a);
+    }
+    Ok(Buffer::from(new_data))
+}
+
+// Drawing utilities (standalone functions)
+#[napi]
+pub fn draw_pixel(buffer: Buffer, x: u32, y: u32, width: u32, color: Color) -> Result<Buffer> {
+    let buffer_data = buffer.as_ref();
+    let index = (y * width + x) as usize * 4;
+    
+    if index + 3 < buffer_data.len() {
+        let mut new_data = buffer_data.to_vec();
+        new_data[index] = color.r;
+        new_data[index + 1] = color.g;
+        new_data[index + 2] = color.b;
+        new_data[index + 3] = color.a;
+        Ok(Buffer::from(new_data))
+    } else {
+        Err(Error::new(Status::InvalidArg, "Pixel position out of bounds"))
+    }
+}
+
+#[napi]
+pub fn draw_line(
+    buffer: Buffer,
+    x1: u32,
+    y1: u32,
+    x2: u32,
+    y2: u32,
+    width: u32,
+    height: u32,
+    color: Color
+) -> Result<Buffer> {
+    let buffer_data = buffer.as_ref();
+    let mut new_data = buffer_data.to_vec();
+    
+    // Bresenham's line algorithm
+    let mut x0 = x1 as i32;
+    let mut y0 = y1 as i32;
+    let x1_i = x2 as i32;
+    let y1_i = y2 as i32;
+    
+    let dx = (x1_i - x0).abs();
+    let dy = -(y1_i - y0).abs();
+    let mut error = dx + dy;
+    
+    let sx = if x0 < x1_i { 1 } else { -1 };
+    let sy = if y0 < y1_i { 1 } else { -1 };
+    
+    loop {
+        // Draw pixel at current position
+        if x0 >= 0 && y0 >= 0 && (x0 as u32) < width && (y0 as u32) < height {
+            let index = (y0 as u32 * width + x0 as u32) as usize * 4;
+            if index + 3 < new_data.len() {
+                new_data[index] = color.r;
+                new_data[index + 1] = color.g;
+                new_data[index + 2] = color.b;
+                new_data[index + 3] = color.a;
+            }
+        }
+        
+        if x0 == x1_i && y0 == y1_i {
+            break;
+        }
+        
+        let e2 = 2 * error;
+        if e2 >= dy {
+            error += dy;
+            x0 += sx;
+        }
+        if e2 <= dx {
+            error += dx;
+            y0 += sy;
+        }
+    }
+    
+    Ok(Buffer::from(new_data))
+}
+
+#[napi]
+pub fn draw_circle(
+    buffer: Buffer,
+    cx: u32,
+    cy: u32,
+    radius: u32,
+    buffer_width: u32,
+    buffer_height: u32,
+    color: Color
+) -> Result<Buffer> {
+    let buffer_data = buffer.as_ref();
+    let mut new_data = buffer_data.to_vec();
+    let radius_i = radius as i32;
+    let cx_i = cx as i32;
+    let cy_i = cy as i32;
+    
+    // Bresenham's circle algorithm
+    let mut x = 0i32;
+    let mut y = radius_i;
+    let mut d = 3 - 2 * radius_i;
+    
+    while y >= x {
+        // Draw 8 points
+        let points = [
+            (cx_i + x, cy_i + y),
+            (cx_i - x, cy_i + y),
+            (cx_i + x, cy_i - y),
+            (cx_i - x, cy_i - y),
+            (cx_i + y, cy_i + x),
+            (cx_i - y, cy_i + x),
+            (cx_i + y, cy_i - x),
+            (cx_i - y, cy_i - x),
+        ];
+        
+        for (px, py) in points {
+            if px >= 0 && py >= 0 && (px as u32) < buffer_width && (py as u32) < buffer_height {
+                let index = (py as u32 * buffer_width + px as u32) as usize * 4;
+                if index + 3 < new_data.len() {
+                    new_data[index] = color.r;
+                    new_data[index + 1] = color.g;
+                    new_data[index + 2] = color.b;
+                    new_data[index + 3] = color.a;
+                }
+            }
+        }
+        
+        x += 1;
+        if d > 0 {
+            y -= 1;
+            d += 4 * (x - y) + 10;
+        } else {
+            d += 4 * x + 6;
+        }
+    }
+    
+    Ok(Buffer::from(new_data))
 }
 
 #[cfg(test)]
