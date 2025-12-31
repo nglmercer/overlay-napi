@@ -62,43 +62,43 @@ jobs:
         settings:
           - host: macos-latest
             target: x86_64-apple-darwin
-            build: bun build --target x86_64-apple-darwin
+            build: bun run build -- --target x86_64-apple-darwin
           - host: windows-latest
-            build: bun build --target x86_64-pc-windows-msvc
+            build: bun run build -- --target x86_64-pc-windows-msvc
             target: x86_64-pc-windows-msvc
           - host: windows-latest
-            build: bun build --target i686-pc-windows-msvc
+            build: bun run build -- --target i686-pc-windows-msvc
             target: i686-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: bun build --target x86_64-unknown-linux-gnu --use-napi-cross
+            build: bun run build -- --target x86_64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            build: bun build --target x86_64-unknown-linux-musl -x
+            build: bun run build -- --target x86_64-unknown-linux-musl -x
           - host: macos-latest
             target: aarch64-apple-darwin
-            build: bun build --target aarch64-apple-darwin
+            build: bun run build -- --target aarch64-apple-darwin
           - host: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            build: bun build --target aarch64-unknown-linux-gnu --use-napi-cross
+            build: bun run build -- --target aarch64-unknown-linux-gnu --use-napi-cross
           - host: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-            build: bun build --target armv7-unknown-linux-gnueabihf --use-napi-cross
+            build: bun run build -- --target armv7-unknown-linux-gnueabihf --use-napi-cross
           - host: ubuntu-latest
             target: aarch64-linux-android
-            build: bun build --target aarch64-linux-android
+            build: bun run build -- --target aarch64-linux-android
           - host: ubuntu-latest
             target: armv7-linux-androideabi
-            build: bun build --target armv7-linux-androideabi
+            build: bun run build -- --target armv7-linux-androideabi
           - host: ubuntu-latest
             target: aarch64-unknown-linux-musl
-            build: bun build --target aarch64-unknown-linux-musl -x
+            build: bun run build -- --target aarch64-unknown-linux-musl -x
           - host: windows-latest
             target: aarch64-pc-windows-msvc
-            build: bun build --target aarch64-pc-windows-msvc
+            build: bun run build -- --target aarch64-pc-windows-msvc
           - host: ubuntu-latest
             target: wasm32-wasip1-threads
-            build: bun build --target wasm32-wasip1-threads
+            build: bun run build -- --target wasm32-wasip1-threads
     name: stable - ${{ matrix.settings.target }} - node@22
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -196,7 +196,7 @@ jobs:
             env
             freebsd-version
             bun install
-            bun build
+            bun run build
             rm -rf node_modules
             rm -rf target
             rm -rf .bun/install/cache
