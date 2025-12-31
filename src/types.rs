@@ -22,6 +22,22 @@ impl From<WindowLevel> for WinitWindowLevel {
   }
 }
 
+#[napi]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum OverlayEvent {
+  Resized,
+  Moved,
+  CloseRequested,
+  Destroyed,
+  Focused,
+  Blurred,
+  Minimized,
+  Maximized,
+  Restored,
+  MouseEnter,
+  MouseLeave,
+}
+
 #[napi(object)]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct WindowPosition {
@@ -65,6 +81,23 @@ impl Clone for DecodedImage {
   }
 }
 
+#[napi(object)]
+#[derive(Debug, Clone)]
+pub struct WindowConfig {
+  pub width: Option<u32>,
+  pub height: Option<u32>,
+  pub x: Option<i32>,
+  pub y: Option<i32>,
+  pub title: Option<String>,
+  pub always_on_top: Option<bool>,
+  pub transparent: Option<bool>,
+  pub decorations: Option<bool>,
+  pub resizable: Option<bool>,
+  pub fullscreen: Option<bool>,
+  pub minimized: Option<bool>,
+  pub maximized: Option<bool>,
+}
+
 // Constructor functions
 #[napi]
 pub fn create_position(x: i32, y: i32) -> WindowPosition {
@@ -74,4 +107,22 @@ pub fn create_position(x: i32, y: i32) -> WindowPosition {
 #[napi]
 pub fn create_size(width: u32, height: u32) -> WindowSize {
   WindowSize { width, height }
+}
+
+#[napi]
+pub fn create_window_config() -> WindowConfig {
+  WindowConfig {
+    width: Some(800),
+    height: Some(600),
+    x: Some(100),
+    y: Some(100),
+    title: Some("Overlay NAPI".to_string()),
+    always_on_top: Some(true),
+    transparent: Some(true),
+    decorations: Some(false),
+    resizable: Some(true),
+    fullscreen: Some(false),
+    minimized: Some(false),
+    maximized: Some(false),
+  }
 }

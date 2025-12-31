@@ -1,53 +1,38 @@
-//! Window management and event handling
-
 use crate::color::Color;
-use crate::types::{WindowLevel, WindowPosition, WindowSize};
+use crate::types::{OverlayEvent, WindowConfig, WindowLevel, WindowPosition, WindowSize};
 use napi::bindgen_prelude::Buffer;
+use napi::threadsafe_function::{ThreadsafeFunction, ThreadsafeFunctionCallMode};
 use napi::{Error, Result, Status};
 use pixels::{Pixels, SurfaceTexture};
 use std::sync::{Arc, Mutex};
 use winit::dpi::{LogicalPosition, LogicalSize};
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::{Window, WindowBuilder};
+use winit::window::{Fullscreen, Window, WindowBuilder};
+
+#[cfg(target_os = "windows")]
+use winit::platform::run_return::EventLoopExtRunReturn;
+#[cfg(target_os = "linux")]
+use winit::platform::run_return::EventLoopExtRunReturn;
 
 /// Internal window state management
 pub struct WindowState {
   pub pixels: Option<Pixels>,
   pub window: Option<Arc<Window>>,
+  pub width: u32,
+  pub height: u32,
+  pub event_callback: Option<ThreadsafeFunction<OverlayEvent>>,
 }
 
 impl WindowState {
+  #[allow(dead_code)]
   pub fn new() -> Self {
     Self {
       pixels: None,
       window: None,
-    }
-  }
-}
-
-/// Initial configuration for window creation
-#[derive(Debug, Clone)]
-pub struct InitialConfig {
-  pub width: u32,
-  pub height: u32,
-  pub x: i32,
-  pub y: i32,
-  pub title: String,
-  pub window_level: WindowLevel,
-  pub initial_frame_data: Option<Vec<u8>>,
-}
-
-impl Default for InitialConfig {
-  fn default() -> Self {
-    Self {
-      width: 800,
-      height: 600,
-      x: 100,
-      y: 100,
-      title: "Overlay NAPI".to_string(),
-      window_level: WindowLevel::AlwaysOnTop,
-      initial_frame_data: None,
+      width: 0,
+      height: 0,
+      event_callback: None,
     }
   }
 }
@@ -55,19 +40,43 @@ impl Default for InitialConfig {
 /// Create overlay window with optimized configuration
 pub fn create_overlay_window(
   event_loop: &EventLoop<()>,
-  config: &InitialConfig,
+  config: &WindowConfig,
 ) -> Result<(Arc<Window>, Pixels)> {
+  let width = config.width.unwrap_or(800);
+  let height = config.height.unwrap_or(600);
+  let title = config
+    .title
+    .clone()
+    .unwrap_or_else(|| "Overlay NAPI".to_string());
+  let transparent = config.transparent.unwrap_or(true);
+  let decorations = config.decorations.unwrap_or(false);
+  let always_on_top = config.always_on_top.unwrap_or(true);
+  let resizable = config.resizable.unwrap_or(true);
+
   // Create transparent overlay window with configuration
   let mut window_builder = WindowBuilder::new()
-    .with_transparent(true)
-    .with_decorations(false)
-    .with_window_level(config.window_level.into())
-    .with_title(&config.title)
-    .with_inner_size(LogicalSize::new(config.width, config.height));
+    .with_transparent(transparent)
+    .with_decorations(decorations)
+    .with_window_level(if always_on_top {
+      winit::window::WindowLevel::AlwaysOnTop
+    } else {
+      winit::window::WindowLevel::Normal
+    })
+    .with_title(&title)
+    .with_resizable(resizable)
+    .with_inner_size(LogicalSize::new(width, height));
 
   // Set position if specified
-  if config.x != 0 || config.y != 0 {
-    window_builder = window_builder.with_position(LogicalPosition::new(config.x, config.y));
+  if let (Some(x), Some(y)) = (config.x, config.y) {
+    window_builder = window_builder.with_position(LogicalPosition::new(x, y));
+  }
+
+  // Set initial state
+  if config.fullscreen.unwrap_or(false) {
+    window_builder = window_builder.with_fullscreen(Some(Fullscreen::Borderless(None)));
+  }
+  if config.maximized.unwrap_or(false) {
+    window_builder = window_builder.with_maximized(true);
   }
 
   let window = Arc::new(window_builder.build(event_loop).map_err(|e| {
@@ -90,6 +99,11 @@ pub fn create_overlay_window(
       )
     })?;
 
+  // Set minimized if requested
+  if config.minimized.unwrap_or(false) {
+    window.set_minimized(true);
+  }
+
   Ok((window, pixels))
 }
 
@@ -103,16 +117,18 @@ impl WindowController {
     Self { state }
   }
 
+  pub fn set_event_callback(&self, callback: ThreadsafeFunction<OverlayEvent>) {
+    let mut state = self.state.lock().unwrap();
+    state.event_callback = Some(callback);
+  }
+
   pub fn show(&self) -> Result<()> {
     let state = self.state.lock().unwrap();
     if let Some(window) = &state.window {
       window.set_visible(true);
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -122,10 +138,61 @@ impl WindowController {
       window.set_visible(false);
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn minimize(&self) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      window.set_minimized(true);
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn maximize(&self) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      window.set_maximized(true);
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn restore(&self) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      window.set_minimized(false);
+      window.set_maximized(false);
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn set_fullscreen(&self, fullscreen: bool) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      if fullscreen {
+        window.set_fullscreen(Some(Fullscreen::Borderless(None)));
+      } else {
+        window.set_fullscreen(None);
+      }
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn is_fullscreen(&self) -> Result<bool> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      Ok(window.fullscreen().is_some())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -135,10 +202,7 @@ impl WindowController {
       window.set_outer_position(LogicalPosition::new(x, y));
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -153,10 +217,7 @@ impl WindowController {
       })?;
       Ok(WindowPosition { x: pos.x, y: pos.y })
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -166,10 +227,7 @@ impl WindowController {
       window.set_inner_size(LogicalSize::new(width, height));
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -182,10 +240,7 @@ impl WindowController {
         height: size.height,
       })
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -195,10 +250,7 @@ impl WindowController {
       window.set_title(title);
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -208,10 +260,7 @@ impl WindowController {
       window.set_window_level(level.into());
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -220,10 +269,7 @@ impl WindowController {
     if let Some(window) = &state.window {
       Ok(window.is_visible().unwrap_or(false))
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -233,10 +279,32 @@ impl WindowController {
       window.request_redraw();
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn set_cursor_visible(&self, visible: bool) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      window.set_cursor_visible(visible);
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  pub fn set_ignore_mouse_events(&self, ignore: bool) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      window.set_cursor_hittest(!ignore).map_err(|e| {
+        Error::new(
+          Status::GenericFailure,
+          format!("Failed to set hittest: {}", e),
+        )
+      })?;
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 }
@@ -251,14 +319,12 @@ impl FrameController {
     Self { state }
   }
 
-  pub fn update_frame(&self, buffer: Buffer) -> Result<()> {
+  pub fn update_frame(&self, buffer_data: &[u8]) -> Result<()> {
     let mut state = self.state.lock().unwrap();
 
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
-      let buffer_data = buffer.as_ref();
 
-      // Ensure buffer size matches frame size
       if buffer_data.len() != frame.len() {
         return Err(Error::new(
           Status::InvalidArg,
@@ -270,52 +336,40 @@ impl FrameController {
         ));
       }
 
-      // Copy buffer data to frame
       frame.copy_from_slice(buffer_data);
+
+      if let Some(window) = &state.window {
+        window.request_redraw();
+      }
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
   pub fn get_frame_size(&self) -> Result<Vec<u32>> {
     let state = self.state.lock().unwrap();
-
-    if let Some(pixels) = &state.pixels {
-      let frame = pixels.frame();
-      let size = frame.len() / 4; // RGBA = 4 bytes per pixel
-      let width = (size as f64).sqrt() as u32;
-      let height = width;
-
-      Ok(vec![width, height])
+    if state.pixels.is_some() {
+      Ok(vec![state.width, state.height])
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
   pub fn clear_frame(&self, color: &Color) -> Result<()> {
     let mut state = self.state.lock().unwrap();
-
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
       let rgba = color.to_rgba();
-
-      // Fill frame with solid color using optimized chunks
       for chunk in frame.chunks_exact_mut(4) {
         chunk.copy_from_slice(&rgba);
       }
+      if let Some(window) = &state.window {
+        window.request_redraw();
+      }
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
@@ -328,12 +382,11 @@ impl FrameController {
     color: &Color,
   ) -> Result<()> {
     let mut state = self.state.lock().unwrap();
+    let frame_width = state.width as usize;
+    let frame_height = state.height as usize;
 
     if let Some(pixels) = &mut state.pixels {
       let frame = pixels.frame_mut();
-      let frame_size = self.get_frame_size()?;
-      let frame_width = frame_size[0] as usize;
-      let frame_height = frame_size[1] as usize;
 
       crate::buffer::draw_rectangle_optimized(
         frame,
@@ -347,103 +400,214 @@ impl FrameController {
         },
         color,
       );
+
+      if let Some(window) = &state.window {
+        window.request_redraw();
+      }
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
-  /// Get the current frame buffer for advanced manipulations
+  pub fn draw_image(&self, x: u32, y: u32, image: &crate::types::DecodedImage) -> Result<()> {
+    let mut state = self.state.lock().unwrap();
+    let frame_width = state.width as usize;
+    let frame_height = state.height as usize;
+
+    if let Some(pixels) = &mut state.pixels {
+      let frame = pixels.frame_mut();
+      let img_data = image.data.as_ref();
+      let img_width = image.width as usize;
+      let img_height = image.height as usize;
+
+      // Simple blit with bounds checking
+      for iy in 0..img_height {
+        let py = y as usize + iy;
+        if py >= frame_height {
+          break;
+        }
+
+        for ix in 0..img_width {
+          let px = x as usize + ix;
+          if px >= frame_width {
+            break;
+          }
+
+          let src_idx = (iy * img_width + ix) * 4;
+          let dst_idx = (py * frame_width + px) * 4;
+
+          if src_idx + 3 < img_data.len() && dst_idx + 3 < frame.len() {
+            frame[dst_idx..dst_idx + 4].copy_from_slice(&img_data[src_idx..src_idx + 4]);
+          }
+        }
+      }
+
+      if let Some(window) = &state.window {
+        window.request_redraw();
+      }
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
   pub fn get_frame_buffer(&self) -> Result<Buffer> {
     let state = self.state.lock().unwrap();
-
     if let Some(pixels) = &state.pixels {
       let frame = pixels.frame();
       Ok(Buffer::from(frame.to_vec()))
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
-  /// Manually trigger a render of the current frame
   pub fn render(&self) -> Result<()> {
     let state = self.state.lock().unwrap();
-
     if let Some(pixels) = &state.pixels {
       pixels
         .render()
         .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to render: {}", e)))?;
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 
-  /// Resize the frame buffer and window
   pub fn resize(&self, width: u32, height: u32) -> Result<()> {
     let mut state = self.state.lock().unwrap();
-
     if let Some(pixels) = &mut state.pixels {
       pixels
         .resize_buffer(width, height)
         .map_err(|e| Error::new(Status::GenericFailure, format!("Failed to resize: {}", e)))?;
+
+      state.width = width;
+      state.height = height;
+
+      if let Some(window) = &state.window {
+        window.request_redraw();
+      }
       Ok(())
     } else {
-      Err(Error::new(
-        Status::GenericFailure,
-        "Overlay not initialized",
-      ))
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
 }
 
-/// Event loop runner with optimized event handling
-pub fn run_event_loop(event_loop: EventLoop<()>, state: Arc<Mutex<WindowState>>) -> ! {
+/// Event loop runner
+pub fn run_event_loop(event_loop: EventLoop<()>, windows: Vec<Arc<Mutex<WindowState>>>) -> ! {
   event_loop.run(move |event, _, control_flow| {
     *control_flow = ControlFlow::Wait;
+    handle_winit_event(event, control_flow, &windows);
+  });
+}
 
-    match event {
-      Event::WindowEvent { event, .. } => {
+pub fn poll_event_loop(
+  event_loop: &mut EventLoop<()>,
+  windows: &[Arc<Mutex<WindowState>>],
+) -> bool {
+  let mut app_should_exit = false;
+  #[cfg(any(target_os = "windows", target_os = "linux"))]
+  {
+    event_loop.run_return(|event, _, control_flow| match event {
+      Event::RedrawEventsCleared => {
+        *control_flow = ControlFlow::Exit;
+      }
+      Event::WindowEvent {
+        event: WindowEvent::CloseRequested,
+        ..
+      } => {
+        app_should_exit = true;
+        *control_flow = ControlFlow::Exit;
+      }
+      _ => {
+        *control_flow = ControlFlow::Poll;
+        handle_winit_event(event, control_flow, windows);
+      }
+    });
+  }
+  app_should_exit
+}
+
+fn handle_winit_event(
+  event: Event<()>,
+  control_flow: &mut ControlFlow,
+  windows: &[Arc<Mutex<WindowState>>],
+) {
+  match event {
+    Event::WindowEvent {
+      event, window_id, ..
+    } => {
+      let target_window = windows.iter().find(|w| {
+        let guard = w.lock().unwrap();
+        guard
+          .window
+          .as_ref()
+          .map(|win| win.id() == window_id)
+          .unwrap_or(false)
+      });
+
+      if let Some(state_arc) = target_window {
+        let mut overlay_event = None;
+
         match event {
           WindowEvent::CloseRequested => {
+            overlay_event = Some(OverlayEvent::CloseRequested);
             *control_flow = ControlFlow::Exit;
           }
           WindowEvent::Resized(size) => {
-            let mut state_guard = state.lock().unwrap();
-            if let Some(pixels) = &mut state_guard.pixels {
-              // Handle resize
+            overlay_event = Some(OverlayEvent::Resized);
+            let mut state = state_arc.lock().unwrap();
+            if let Some(pixels) = &mut state.pixels {
               let _ = pixels.resize_buffer(size.width, size.height);
             }
           }
+          WindowEvent::Moved(_) => {
+            overlay_event = Some(OverlayEvent::Moved);
+          }
+          WindowEvent::Focused(focused) => {
+            overlay_event = Some(if focused {
+              OverlayEvent::Focused
+            } else {
+              OverlayEvent::Blurred
+            });
+          }
+          WindowEvent::CursorEntered { .. } => {
+            overlay_event = Some(OverlayEvent::MouseEnter);
+          }
+          WindowEvent::CursorLeft { .. } => {
+            overlay_event = Some(OverlayEvent::MouseLeave);
+          }
           _ => {}
         }
-      }
-      Event::RedrawRequested(_) => {
-        let mut state_guard = state.lock().unwrap();
-        if let Some(pixels) = &mut state_guard.pixels {
-          // Render the current frame
-          if pixels.render().is_err() {
-            eprintln!("Failed to render frame");
+
+        if let Some(ev) = overlay_event {
+          let state = state_arc.lock().unwrap();
+          if let Some(cb) = &state.event_callback {
+            cb.call(Ok(ev), ThreadsafeFunctionCallMode::NonBlocking);
           }
         }
       }
-      Event::MainEventsCleared => {
-        // Request redraw on each frame - avoid double lock
-        let state_guard = state.lock().unwrap();
-        if let Some(window) = &state_guard.window {
-          window.request_redraw();
+    }
+    Event::RedrawRequested(window_id) => {
+      let target_window = windows.iter().find(|w| {
+        let guard = w.lock().unwrap();
+        guard
+          .window
+          .as_ref()
+          .map(|win| win.id() == window_id)
+          .unwrap_or(false)
+      });
+
+      if let Some(state_arc) = target_window {
+        let mut state = state_arc.lock().unwrap();
+        if let Some(pixels) = &mut state.pixels {
+          if pixels.render().is_err() {
+            // eprintln!("Failed to render");
+          }
         }
       }
-      _ => {}
     }
-  });
+    _ => {}
+  }
 }

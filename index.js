@@ -576,7 +576,8 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
-module.exports.Overlay = nativeBinding.Overlay
+module.exports.OverlayApp = nativeBinding.OverlayApp
+module.exports.OverlayWindow = nativeBinding.OverlayWindow
 module.exports.blendColors = nativeBinding.blendColors
 module.exports.calculateBufferSizeNapi = nativeBinding.calculateBufferSizeNapi
 module.exports.colorBlack = nativeBinding.colorBlack
@@ -600,10 +601,12 @@ module.exports.createColor = nativeBinding.createColor
 module.exports.createPosition = nativeBinding.createPosition
 module.exports.createRgbaBuffer = nativeBinding.createRgbaBuffer
 module.exports.createSize = nativeBinding.createSize
+module.exports.createWindowConfig = nativeBinding.createWindowConfig
 module.exports.drawCircle = nativeBinding.drawCircle
 module.exports.drawLine = nativeBinding.drawLine
 module.exports.drawPixel = nativeBinding.drawPixel
 module.exports.fillBufferColor = nativeBinding.fillBufferColor
 module.exports.lerpColors = nativeBinding.lerpColors
 module.exports.loadImage = nativeBinding.loadImage
+module.exports.OverlayEvent = nativeBinding.OverlayEvent
 module.exports.WindowLevel = nativeBinding.WindowLevel
