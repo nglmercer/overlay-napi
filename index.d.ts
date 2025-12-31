@@ -72,6 +72,12 @@ export declare function createRgbaBuffer(width: number, height: number): Buffer
 
 export declare function createSize(width: number, height: number): WindowSize
 
+export interface DecodedImage {
+  data: Buffer
+  width: number
+  height: number
+}
+
 export declare function drawCircle(
   buffer: Buffer,
   cx: number,
@@ -101,6 +107,8 @@ export interface LineParams {
   bufferHeight: number
   color: Color
 }
+
+export declare function loadImage(path: string): DecodedImage
 
 export declare const enum WindowLevel {
   Normal = 0,

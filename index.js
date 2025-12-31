@@ -606,4 +606,5 @@ module.exports.drawPixel = nativeBinding.drawPixel
 module.exports.fillBufferColor = nativeBinding.fillBufferColor
 module.exports.fillBufferRgba = nativeBinding.fillBufferRgba
 module.exports.lerpColors = nativeBinding.lerpColors
+module.exports.loadImage = nativeBinding.loadImage
 module.exports.WindowLevel = nativeBinding.WindowLevel
