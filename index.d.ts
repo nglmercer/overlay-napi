@@ -5,6 +5,59 @@ export declare class Overlay {
   start(): void
   updateFrame(buffer: Buffer): void
   getFrameSize(): Array<number>
+  show(): void
+  hide(): void
+  setPosition(x: number, y: number): void
+  getPosition(): WindowPosition
+  setSize(width: number, height: number): void
+  getSize(): WindowSize
+  setTitle(title: string): void
+  setWindowLevel(level: WindowLevel): void
+  requestRedraw(): void
+  isVisible(): boolean
+  clearFrame(color: Color): void
+  drawRectangle(x: number, y: number, width: number, height: number, color: Color): void
 }
 
+export interface Color {
+  r: number
+  g: number
+  b: number
+  a: number
+}
+
+export declare function colorBlack(): Color
+
+export declare function colorBlue(): Color
+
+export declare function colorGreen(): Color
+
+export declare function colorRed(): Color
+
+export declare function colorTransparent(): Color
+
+export declare function colorWhite(): Color
+
+export declare function createColor(r: number, g: number, b: number, a: number): Color
+
+export declare function createPosition(x: number, y: number): WindowPosition
+
+export declare function createSize(width: number, height: number): WindowSize
+
 export declare function plus100(input: number): number
+
+export declare const enum WindowLevel {
+  Normal = 0,
+  AlwaysOnTop = 1,
+  AlwaysOnBottom = 2
+}
+
+export interface WindowPosition {
+  x: number
+  y: number
+}
+
+export interface WindowSize {
+  width: number
+  height: number
+}

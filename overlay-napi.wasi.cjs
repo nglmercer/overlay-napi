@@ -109,4 +109,14 @@ const { instance: __napiInstance, module: __wasiModule, napiModule: __napiModule
 })
 module.exports = __napiModule.exports
 module.exports.Overlay = __napiModule.exports.Overlay
+module.exports.colorBlack = __napiModule.exports.colorBlack
+module.exports.colorBlue = __napiModule.exports.colorBlue
+module.exports.colorGreen = __napiModule.exports.colorGreen
+module.exports.colorRed = __napiModule.exports.colorRed
+module.exports.colorTransparent = __napiModule.exports.colorTransparent
+module.exports.colorWhite = __napiModule.exports.colorWhite
+module.exports.createColor = __napiModule.exports.createColor
+module.exports.createPosition = __napiModule.exports.createPosition
+module.exports.createSize = __napiModule.exports.createSize
 module.exports.plus100 = __napiModule.exports.plus100
+module.exports.WindowLevel = __napiModule.exports.WindowLevel

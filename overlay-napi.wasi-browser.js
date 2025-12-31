@@ -57,4 +57,14 @@ const {
 })
 export default __napiModule.exports
 export const Overlay = __napiModule.exports.Overlay
+export const colorBlack = __napiModule.exports.colorBlack
+export const colorBlue = __napiModule.exports.colorBlue
+export const colorGreen = __napiModule.exports.colorGreen
+export const colorRed = __napiModule.exports.colorRed
+export const colorTransparent = __napiModule.exports.colorTransparent
+export const colorWhite = __napiModule.exports.colorWhite
+export const createColor = __napiModule.exports.createColor
+export const createPosition = __napiModule.exports.createPosition
+export const createSize = __napiModule.exports.createSize
 export const plus100 = __napiModule.exports.plus100
+export const WindowLevel = __napiModule.exports.WindowLevel

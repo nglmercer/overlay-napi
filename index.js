@@ -577,4 +577,14 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.Overlay = nativeBinding.Overlay
+module.exports.colorBlack = nativeBinding.colorBlack
+module.exports.colorBlue = nativeBinding.colorBlue
+module.exports.colorGreen = nativeBinding.colorGreen
+module.exports.colorRed = nativeBinding.colorRed
+module.exports.colorTransparent = nativeBinding.colorTransparent
+module.exports.colorWhite = nativeBinding.colorWhite
+module.exports.createColor = nativeBinding.createColor
+module.exports.createPosition = nativeBinding.createPosition
+module.exports.createSize = nativeBinding.createSize
 module.exports.plus100 = nativeBinding.plus100
+module.exports.WindowLevel = nativeBinding.WindowLevel
