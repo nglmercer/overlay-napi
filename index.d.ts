@@ -141,9 +141,6 @@ export interface LineParams {
   color: Color
 }
 
-/** Load and decode image from file path */
-export declare function loadImage(path: string): DecodedImage
-
 export declare const enum OverlayEvent {
   Resized = 0,
   Moved = 1,

@@ -113,7 +113,7 @@ dist
 
 # End of https://www.toptal.com/developers/gitignore/api/node
 
-#temp 
+#temp
 examples/*.png
 #Added by cargo
 
@@ -130,4 +130,5 @@ Cargo.lock
 !.yarn/versions
 /npm
 package-lock.json
+yarn.lock
 bun.lock

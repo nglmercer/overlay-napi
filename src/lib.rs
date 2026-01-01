@@ -9,14 +9,12 @@ use winit::event_loop::EventLoop;
 // Module declarations
 mod buffer;
 mod color;
-mod image;
 mod types;
 mod window;
 
 // Re-export main types for NAPI compatibility
 pub use buffer::*;
 pub use color::*;
-pub use image::*;
 pub use types::*;
 
 use window::{poll_event_loop, run_event_loop, FrameController, WindowController, WindowState};
