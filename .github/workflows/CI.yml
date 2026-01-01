@@ -55,62 +55,43 @@ jobs:
       - name: Clippy
         run: cargo clippy
         working-directory: .
-  build:
+  build-and-test:
     strategy:
       fail-fast: false
       matrix:
-        settings:
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            build: bun run build -- --target x86_64-apple-darwin
-          - host: windows-latest
-            build: bun run build -- --target x86_64-pc-windows-msvc
-            target: x86_64-pc-windows-msvc
-          - host: windows-latest
-            build: bun run build -- --target i686-pc-windows-msvc
-            target: i686-pc-windows-msvc
+        include:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            build: bun run build -- --target x86_64-unknown-linux-gnu --use-napi-cross
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            build: bun run build -- --target x86_64-unknown-linux-musl -x
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            build: bun run build -- --target aarch64-apple-darwin
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-gnu
-            build: bun run build -- --target aarch64-unknown-linux-gnu --use-napi-cross
-          - host: ubuntu-latest
-            target: armv7-unknown-linux-gnueabihf
-            build: bun run build -- --target armv7-unknown-linux-gnueabihf --use-napi-cross
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            build: bun run build -- --target aarch64-unknown-linux-musl -x
+            node: '22'
           - host: windows-latest
-            target: aarch64-pc-windows-msvc
-            build: bun run build -- --target aarch64-pc-windows-msvc
-            setup: |
-              echo "Setting up Windows ARM64 build environment"
-              rustup target add aarch64-pc-windows-msvc
-    name: stable - ${{ matrix.settings.target }} - node@22
-    runs-on: ${{ matrix.settings.host }}
+            target: x86_64-pc-windows-msvc
+            node: '22'
+            architecture: x64
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            node: '22'
+            architecture: x64
+    name: Build & Test - ${{ matrix.target }}
+    runs-on: ${{ matrix.host }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node }}
+          architecture: ${{ matrix.architecture }}
 
       - name: Install bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.3.5
-      - name: Install
+
+      - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-          targets: ${{ matrix.settings.target }}
+          targets: ${{ matrix.target }}
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
@@ -121,40 +102,21 @@ jobs:
             ~/.napi-rs
             .cargo-cache
             target/
-          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
-      - uses: mlugg/setup-zig@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        with:
-          version: 0.14.1
-      - name: Install cargo-zigbuild
-        uses: taiki-e/install-action@v2
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          tool: cargo-zigbuild
-      - name: Setup toolchain
-        run: ${{ matrix.settings.setup }}
-        if: ${{ matrix.settings.setup }}
-        shell: bash
+          key: ${{ matrix.target }}-cargo-${{ matrix.host }}
 
       - name: Install dependencies
         run: bun install
         env:
           HUSKY: 0
+
       - name: Build
         run: |
-          echo "Building for target: ${{ matrix.settings.target }}"
-          export TARGET="${{ matrix.settings.target }}"
-          if [[ "${{ matrix.settings.target }}" == *"musl"* ]]; then
-            export LIBC="musl"
-          else
-            export LIBC="gnu"
-          fi
-          ${{ matrix.settings.build }}
+          echo "Building for target: ${{ matrix.target }}"
+          bun run build -- --target ${{ matrix.target }} --release
           echo "Build completed, checking for artifacts..."
           ls -la
         shell: bash
+
       - name: Post-build processing
         run: |
           echo "Running post-build script..."
@@ -162,244 +124,6 @@ jobs:
           echo "Post-build completed, final files:"
           ls -la *.node 2>/dev/null || echo "No .node files found"
         shell: bash
-      - name: List built files
-        run: |
-          echo "Listing files after build:"
-          ls -la
-          echo "Looking for .node files:"
-          find . -name "*.node" -type f || echo "No .node files found"
-          echo "Looking for overlay-napi files:"
-          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
-        shell: bash
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bindings-${{ matrix.settings.target }}
-          path: |
-            overlay-napi.*.node
-            index.js
-            index.d.ts
-          if-no-files-found: error
-          retention-days: 1
-  test-macOS-windows-binding:
-    name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        settings:
-          - host: windows-latest
-            target: x86_64-pc-windows-msvc
-            architecture: x64
-          - host: windows-11-arm
-            target: aarch64-pc-windows-msvc
-            architecture: arm64
-          - host: macos-latest
-            target: aarch64-apple-darwin
-            architecture: arm64
-          - host: macos-latest
-            target: x86_64-apple-darwin
-            architecture: x64
-        node:
-          - '20'
-          - '22'
-    runs-on: ${{ matrix.settings.host }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-          architecture: ${{ matrix.settings.architecture }}
 
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.5
-
-      - name: Install dependencies
-        run: bun install
-        env:
-          HUSKY: 0
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bindings-${{ matrix.settings.target }}
-          path: .
-      - name: List packages
-        run: |
-          echo "Contents after downloading artifacts:"
-          ls -la
-          echo "Looking for .node files:"
-          find . -name "*.node" -type f || echo "No .node files found"
-          echo "Looking for overlay-napi files:"
-          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
-          echo "Directory structure:"
-          ls -R .
-        shell: bash
-      - name: Debug binding loading
-        run: |
-          echo "Node version: $(node --version)"
-          echo "Architecture: $(uname -m)"
-          echo "Platform: $(uname -s)"
-          echo "Testing binding loading..."
-          node -e "
-            try {
-              console.log('Current directory:', process.cwd());
-              console.log('Platform:', process.platform);
-              console.log('Architecture:', process.arch);
-              const fs = require('fs');
-              const files = fs.readdirSync('.');
-              console.log('Files in current directory:', files);
-              const nodeFiles = files.filter(f => f.endsWith('.node'));
-              console.log('.node files:', nodeFiles);
-            } catch (e) {
-              console.error('Error:', e.message);
-            }
-          "
-        shell: bash
-      - name: Pre-test setup
-        run: node scripts/pre-test.js
-        shell: bash
       - name: Test bindings
         run: bun test
-  test-linux-binding:
-    name: Test ${{ matrix.target }} - node@${{ matrix.node }}
-    needs:
-      - build
-    strategy:
-      fail-fast: false
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - x86_64-unknown-linux-musl
-          - aarch64-unknown-linux-gnu
-          - aarch64-unknown-linux-musl
-          - armv7-unknown-linux-gnueabihf
-        node:
-          - '20'
-          - '22'
-    runs-on: ${{ contains(matrix.target, 'aarch64') && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node }}
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.4
-      - name: Output docker params
-        id: docker
-        run: |
-          node -e "
-            if ('${{ matrix.target }}'.startsWith('aarch64')) {
-              console.log('PLATFORM=linux/arm64')
-            } else if ('${{ matrix.target }}'.startsWith('armv7')) {
-              console.log('PLATFORM=linux/arm/v7')
-            } else {
-              console.log('PLATFORM=linux/amd64')
-            }
-          " >> $GITHUB_OUTPUT
-          node -e "
-            if ('${{ matrix.target }}'.endsWith('-musl')) {
-              console.log('IMAGE=node:${{ matrix.node }}-alpine')
-            } else {
-              console.log('IMAGE=node:${{ matrix.node }}-slim')
-            }
-          " >> $GITHUB_OUTPUT
-
-      - name: Install dependencies
-        run: |
-          bun install
-        env:
-          HUSKY: 0
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: bindings-${{ matrix.target }}
-          path: .
-      - name: List packages
-        run: |
-          echo "Contents after downloading artifacts:"
-          ls -la
-          echo "Looking for .node files:"
-          find . -name "*.node" -type f || echo "No .node files found"
-          echo "Looking for overlay-napi files:"
-          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
-          echo "Directory structure:"
-          ls -R .
-        shell: bash
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        if: ${{ contains(matrix.target, 'armv7') }}
-        with:
-          platforms: all
-      - run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-        if: ${{ contains(matrix.target, 'armv7') }}
-      - name: Test bindings
-        uses: addnab/docker-run-action@v3
-        with:
-          image: ${{ steps.docker.outputs.IMAGE }}
-          options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
-          run: |
-            npm install -g bun
-            node scripts/pre-test.js
-            bun test
-  publish:
-    name: Publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      id-token: write
-    needs:
-      - lint
-      - test-macOS-windows-binding
-      - test-linux-binding
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.5
-
-      - name: Install dependencies
-        run: bun install
-        env:
-          HUSKY: 0
-      - name: create npm dirs
-        run: bun napi create-npm-dirs
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-      - name: Move artifacts
-        run: bun artifacts
-      - name: List packages
-        run: ls -R ./npm
-        shell: bash
-      - name: Publish
-        run: |
-          npm config set provenance true
-          if git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+$";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --access public
-          elif git log -1 --pretty=%B | grep "^[0-9]\+\.[0-9]\+\.[0-9]\+";
-          then
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
-            npm publish --tag next --access public
-          else
-            echo "Not a release, skipping publish"
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

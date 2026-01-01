@@ -1,0 +1,8 @@
+{
+  "name": "overlay-napi-win32-x64-msvc",
+  "version": "1.0.0",
+  "main": "index.node",
+  "files": [
+    "index.node"
+  ]
+}

@@ -1,0 +1,296 @@
+name: Releases
+env:
+  DEBUG: napi:*
+  APP_NAME: package-template
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+  CARGO_INCREMENTAL: '1'
+'on':
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            build: bun run build -- --target x86_64-apple-darwin
+          - host: windows-latest
+            build: bun run build -- --target x86_64-pc-windows-msvc
+            target: x86_64-pc-windows-msvc
+          - host: windows-latest
+            build: bun run build -- --target i686-pc-windows-msvc
+            target: i686-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            build: bun run build -- --target x86_64-unknown-linux-gnu --use-napi-cross
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            build: bun run build -- --target x86_64-unknown-linux-musl -x
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            build: bun run build -- --target aarch64-apple-darwin
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            build: bun run build -- --target aarch64-unknown-linux-gnu --use-napi-cross
+          - host: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            build: bun run build -- --target armv7-unknown-linux-gnueabihf --use-napi-cross
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+            build: bun run build -- --target aarch64-unknown-linux-musl -x
+          - host: windows-latest
+            target: aarch64-pc-windows-msvc
+            build: bun run build -- --target aarch64-pc-windows-msvc
+            setup: |
+              echo "Setting up Windows ARM64 build environment"
+              rustup target add aarch64-pc-windows-msvc
+    name: Build - ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.settings.target }}
+
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.napi-rs
+            .cargo-cache
+            target/
+          key: ${{ matrix.settings.target }}-cargo-${{ matrix.settings.host }}
+
+      - uses: mlugg/setup-zig@v2
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        with:
+          version: 0.14.1
+
+      - name: Install cargo-zigbuild
+        uses: taiki-e/install-action@v2
+        if: ${{ contains(matrix.settings.target, 'musl') }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tool: cargo-zigbuild
+
+      - name: Setup toolchain
+        run: ${{ matrix.settings.setup }}
+        if: ${{ matrix.settings.setup }}
+        shell: bash
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          HUSKY: 0
+
+      - name: Build
+        run: |
+          echo "Building for target: ${{ matrix.settings.target }}"
+          export TARGET="${{ matrix.settings.target }}"
+          if [[ "${{ matrix.settings.target }}" == *"musl"* ]]; then
+            export LIBC="musl"
+          else
+            export LIBC="gnu"
+          fi
+          ${{ matrix.settings.build }}
+          echo "Build completed, checking for artifacts..."
+          ls -la
+        shell: bash
+
+      - name: Post-build processing
+        run: |
+          echo "Running post-build script..."
+          node scripts/post-build.js
+          echo "Post-build completed, final files:"
+          ls -la *.node 2>/dev/null || echo "No .node files found"
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: |
+            overlay-napi.*.node
+            index.js
+            index.d.ts
+            scripts/
+          if-no-files-found: error
+
+  test:
+    name: Test - ${{ matrix.settings.target }} - node@${{ matrix.node }}
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            architecture: x64
+          - host: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            architecture: arm64
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            architecture: arm64
+          - host: macos-latest
+            target: x86_64-apple-darwin
+            architecture: x64
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-musl
+          - host: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+        node:
+          - '20'
+          - '22'
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          architecture: ${{ matrix.settings.architecture }}
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          HUSKY: 0
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: .
+
+      - name: Post-build processing for test
+        run: |
+          echo "Running post-build script for test environment..."
+          node scripts/post-build.js
+          echo "Post-build completed, final files:"
+          ls -la *.node 2>/dev/null || echo "No .node files found"
+        shell: bash
+
+      - name: Test bindings
+        run: bun test
+
+      - name: Test Linux bindings (Docker)
+        if: ${{ contains(matrix.settings.host, 'ubuntu') }}
+        uses: addnab/docker-run-action@v3
+        with:
+          image: ${{ contains(matrix.settings.target, 'musl') && 'node:${{ matrix.node }}-alpine' || 'node:${{ matrix.node }}-slim' }}
+          options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }}
+          run: |
+            npm install -g bun
+            node scripts/verify-ci.js
+            node scripts/pre-test.js
+            bun test
+
+  release:
+    name: Release
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.5
+
+      - name: Install dependencies
+        run: bun install
+        env:
+          HUSKY: 0
+
+      - name: Create npm directories
+        run: bun napi create-npm-dirs
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Move artifacts
+        run: bun artifacts
+
+      - name: List packages
+        run: ls -R ./npm
+        shell: bash
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.node
+            npm/**/*.tgz
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          npm config set provenance true
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+          npm publish --access public
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
