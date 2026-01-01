@@ -1,4 +1,4 @@
-import { OverlayApp, createWindowConfig, OverlayEvent, createColor } from '../index.js'
+import { OverlayApp, createWindowConfig, OverlayEvent, createColor, colorTransparent } from '../index.js'
 
 async function main() {
   console.log('🚀 Starting Advanced Overlay Refactor Demo...')
@@ -10,14 +10,15 @@ async function main() {
     config.width = 1000
     config.height = 700
     config.transparent = true
-    config.decorations = true // Let's show decorations for this demo
-    config.resizable = true
+    config.decorations = false // Let's show decorations for this demo
+    config.resizable = false
     config.alwaysOnTop = true
     console.log('🏗️  Creating window...')
     const win = app.createWindow(config)
-
+    win.setIgnoreMouseEvents(true)
     // NEW: Register event listener
-    win.onEvent((event: any) => {
+    win.onEvent((err, event) => {
+      if (err) return
       console.log(`\n🔔 Event Received: ${event}`)
 
       if (event === OverlayEvent.CloseRequested) {
@@ -25,8 +26,8 @@ async function main() {
         process.exit(0)
       }
     })
-
-    const bgColor = createColor(20, 20, 25, 180)
+    //transparent bg
+    const bgColor = colorTransparent()
     const rectColor = createColor(0, 255, 150, 255)
 
     console.log('🎮 Controls:')

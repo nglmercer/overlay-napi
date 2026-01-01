@@ -28,6 +28,14 @@ pub fn fill_buffer_rgba_optimized(buffer: &[u8], r: u8, g: u8, b: u8, a: u8) -> 
   new_data
 }
 
+/// Clear buffer with solid color in-place
+pub fn clear_buffer_optimized(frame: &mut [u8], _width: u32, _height: u32, color: &Color) {
+  let rgba = color.to_rgba();
+  for chunk in frame.chunks_exact_mut(4) {
+    chunk.copy_from_slice(&rgba);
+  }
+}
+
 /// Parameters for rectangle drawing
 pub struct RectangleParams {
   pub x: u32,
@@ -53,8 +61,8 @@ pub fn draw_rectangle_optimized(frame: &mut [u8], params: RectangleParams, color
   // Calculate bounds with clamping
   let start_x = x.min(frame_width as u32);
   let start_y = y.min(frame_height as u32);
-  let end_x = ((x + width).min(frame_width as u32)).max(start_x);
-  let end_y = ((y + height).min(frame_height as u32)).max(start_y);
+  let end_x = x.saturating_add(width).min(frame_width as u32);
+  let end_y = y.saturating_add(height).min(frame_height as u32);
 
   // Optimized rectangle drawing
   for py in start_y..end_y {

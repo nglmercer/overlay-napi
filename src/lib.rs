@@ -4,7 +4,7 @@ use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::sync::{Arc, Mutex};
-use winit::event_loop::EventLoopBuilder;
+use winit::event_loop::EventLoop;
 
 // Module declarations
 mod buffer;
@@ -19,27 +19,13 @@ pub use color::*;
 pub use image::*;
 pub use types::*;
 
-use window::{
-  create_overlay_window, poll_event_loop, run_event_loop, FrameController, WindowController,
-  WindowState,
-};
+use window::{poll_event_loop, run_event_loop, FrameController, WindowController, WindowState};
 
 /// Application manager for the overlay system
 #[napi]
 pub struct OverlayApp {
   event_loop: Option<winit::event_loop::EventLoop<()>>,
   windows: Vec<Arc<Mutex<WindowState>>>,
-}
-
-#[napi]
-impl OverlayApp {
-  #[napi(constructor)]
-  pub fn new() -> Self {
-    Self {
-      event_loop: Some(EventLoopBuilder::new().build()),
-      windows: Vec::new(),
-    }
-  }
 }
 
 impl Default for OverlayApp {
@@ -50,16 +36,27 @@ impl Default for OverlayApp {
 
 #[napi]
 impl OverlayApp {
+  #[napi(constructor)]
+  pub fn new() -> Self {
+    let event_loop = EventLoop::new().expect("Failed to create event loop");
+    Self {
+      event_loop: Some(event_loop),
+      windows: Vec::new(),
+    }
+  }
+
+  /// Create a new window with the given configuration
   #[napi]
   pub fn create_window(&mut self, config: WindowConfig) -> Result<OverlayWindow> {
     let event_loop = self
       .event_loop
-      .as_ref()
+      .as_mut()
       .ok_or_else(|| Error::new(Status::GenericFailure, "Event loop not available"))?;
 
-    let (window, pixels) = create_overlay_window(event_loop, &config)?;
-    let width = config.width.unwrap_or(800);
-    let height = config.height.unwrap_or(600);
+    let (window, pixels) = window::create_overlay_window_from_loop(event_loop, &config)?;
+    let window_size = window.inner_size();
+    let width = window_size.width;
+    let height = window_size.height;
 
     let state = Arc::new(Mutex::new(WindowState {
       pixels: Some(pixels),
