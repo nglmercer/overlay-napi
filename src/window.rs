@@ -14,13 +14,14 @@ use winit::window::{Fullscreen, Window, WindowAttributes, WindowId};
 #[cfg(target_os = "windows")]
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 
-/// Internal window state management
 pub struct WindowState {
   pub pixels: Option<Pixels<'static>>,
   pub window: Option<Arc<Window>>,
   pub width: u32,
   pub height: u32,
   pub event_callback: Option<ThreadsafeFunction<OverlayEvent>>,
+  pub render_when_occluded: bool,
+  pub occluded: bool,
 }
 
 impl WindowState {
@@ -32,6 +33,8 @@ impl WindowState {
       width: 0,
       height: 0,
       event_callback: None,
+      render_when_occluded: true,
+      occluded: false,
     }
   }
 }
@@ -100,6 +103,8 @@ impl<'a> ApplicationHandler for OverlayApplication<'a> {
           } else {
             OverlayEvent::Restored
           });
+          let mut state = state_arc.lock().unwrap();
+          state.occluded = occluded;
         }
         WindowEvent::RedrawRequested => {
           let mut state = state_arc.lock().unwrap();
@@ -504,6 +509,16 @@ impl WindowController {
       Err(Error::new(Status::GenericFailure, "Window not initialized"))
     }
   }
+
+  pub fn set_render_when_occluded(&self, render: bool) {
+    let mut state = self.state.lock().unwrap();
+    state.render_when_occluded = render;
+  }
+
+  pub fn is_occluded(&self) -> bool {
+    let state = self.state.lock().unwrap();
+    state.occluded
+  }
 }
 
 /// Frame buffer operations
@@ -662,6 +677,13 @@ impl FrameController {
 
   pub fn render(&self) -> Result<()> {
     let mut state = self.state.lock().unwrap();
+
+    let should_render = !state.occluded || state.render_when_occluded;
+
+    if !should_render {
+      return Ok(());
+    }
+
     if let Some(pixels) = &mut state.pixels {
       pixels
         .render()

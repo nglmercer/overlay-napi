@@ -115,6 +115,8 @@ dist
 
 #temp
 examples/*.png
+examples/*.webp
+examples/*.gif
 #Added by cargo
 
 /target

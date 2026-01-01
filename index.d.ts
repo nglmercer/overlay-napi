@@ -40,6 +40,8 @@ export declare class OverlayWindow {
   requestRedraw(): void
   setCursorVisible(visible: boolean): void
   setIgnoreMouseEvents(ignore: boolean): void
+  setRenderWhenOccluded(render: boolean): void
+  isOccluded(): boolean
   /** Frame operations */
   clearFrame(color: Color): void
   drawRectangle(x: number, y: number, width: number, height: number, color: Color): void
@@ -168,6 +170,8 @@ export interface WindowConfig {
   fullscreen?: boolean
   minimized?: boolean
   maximized?: boolean
+  renderWhenOccluded?: boolean
+  handleEventLoopModal?: boolean
 }
 
 export declare const enum WindowLevel {

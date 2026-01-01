@@ -62,6 +62,8 @@ impl OverlayApp {
       width,
       height,
       event_callback: None,
+      render_when_occluded: config.render_when_occluded.unwrap_or(true),
+      occluded: false,
     }));
 
     self.windows.push(state.clone());
@@ -223,6 +225,17 @@ impl OverlayWindow {
   #[napi]
   pub fn set_ignore_mouse_events(&self, ignore: bool) -> Result<()> {
     self.window_controller.set_ignore_mouse_events(ignore)
+  }
+
+  #[napi]
+  pub fn set_render_when_occluded(&self, render: bool) -> Result<()> {
+    self.window_controller.set_render_when_occluded(render);
+    Ok(())
+  }
+
+  #[napi]
+  pub fn is_occluded(&self) -> Result<bool> {
+    Ok(self.window_controller.is_occluded())
   }
 
   /// Frame operations

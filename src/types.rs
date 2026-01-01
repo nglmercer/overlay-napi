@@ -96,6 +96,8 @@ pub struct WindowConfig {
   pub fullscreen: Option<bool>,
   pub minimized: Option<bool>,
   pub maximized: Option<bool>,
+  pub render_when_occluded: Option<bool>,
+  pub handle_event_loop_modal: Option<bool>,
 }
 
 // Constructor functions
@@ -124,5 +126,7 @@ pub fn create_window_config() -> WindowConfig {
     fullscreen: Some(false),
     minimized: Some(false),
     maximized: Some(false),
+    render_when_occluded: Some(true),
+    handle_event_loop_modal: Some(true),
   }
 }

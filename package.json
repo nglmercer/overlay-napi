@@ -63,7 +63,8 @@
     "preversion": "napi build --platform && git add .",
     "version": "napi version",
     "prepare": "bunx husky",
-    "example:modern": "node --import @oxc-node/core/register examples/modern-api.ts"
+    "example:modern": "node --import @oxc-node/core/register examples/modern-api.ts",
+    "example:animated": "node --import @oxc-node/core/register examples/animated-media.ts"
   },
   "devDependencies": {
     "@emnapi/core": "^1.5.0",
