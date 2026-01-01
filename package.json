@@ -24,7 +24,8 @@
   "files": [
     "index.d.ts",
     "index.js",
-    "browser.js"
+    "browser.js",
+    "overlay-napi.*.node"
   ],
   "napi": {
     "binaryName": "overlay-napi",

@@ -90,6 +90,9 @@ jobs:
           - host: windows-latest
             target: aarch64-pc-windows-msvc
             build: bun run build -- --target aarch64-pc-windows-msvc
+            setup: |
+              echo "Setting up Windows ARM64 build environment"
+              rustup target add aarch64-pc-windows-msvc
     name: stable - ${{ matrix.settings.target }} - node@22
     runs-on: ${{ matrix.settings.host }}
     steps:
@@ -140,7 +143,33 @@ jobs:
         env:
           HUSKY: 0
       - name: Build
-        run: ${{ matrix.settings.build }}
+        run: |
+          echo "Building for target: ${{ matrix.settings.target }}"
+          export TARGET="${{ matrix.settings.target }}"
+          if [[ "${{ matrix.settings.target }}" == *"musl"* ]]; then
+            export LIBC="musl"
+          else
+            export LIBC="gnu"
+          fi
+          ${{ matrix.settings.build }}
+          echo "Build completed, checking for artifacts..."
+          ls -la
+        shell: bash
+      - name: Post-build processing
+        run: |
+          echo "Running post-build script..."
+          node scripts/post-build.js
+          echo "Post-build completed, final files:"
+          ls -la *.node 2>/dev/null || echo "No .node files found"
+        shell: bash
+      - name: List built files
+        run: |
+          echo "Listing files after build:"
+          ls -la
+          echo "Looking for .node files:"
+          find . -name "*.node" -type f || echo "No .node files found"
+          echo "Looking for overlay-napi files:"
+          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
         shell: bash
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -148,7 +177,10 @@ jobs:
           name: bindings-${{ matrix.settings.target }}
           path: |
             overlay-napi.*.node
+            index.js
+            index.d.ts
           if-no-files-found: error
+          retention-days: 1
   test-macOS-windows-binding:
     name: Test bindings on ${{ matrix.settings.target }} - node@${{ matrix.node }}
     needs:
@@ -196,7 +228,39 @@ jobs:
           name: bindings-${{ matrix.settings.target }}
           path: .
       - name: List packages
-        run: ls -R .
+        run: |
+          echo "Contents after downloading artifacts:"
+          ls -la
+          echo "Looking for .node files:"
+          find . -name "*.node" -type f || echo "No .node files found"
+          echo "Looking for overlay-napi files:"
+          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
+          echo "Directory structure:"
+          ls -R .
+        shell: bash
+      - name: Debug binding loading
+        run: |
+          echo "Node version: $(node --version)"
+          echo "Architecture: $(uname -m)"
+          echo "Platform: $(uname -s)"
+          echo "Testing binding loading..."
+          node -e "
+            try {
+              console.log('Current directory:', process.cwd());
+              console.log('Platform:', process.platform);
+              console.log('Architecture:', process.arch);
+              const fs = require('fs');
+              const files = fs.readdirSync('.');
+              console.log('Files in current directory:', files);
+              const nodeFiles = files.filter(f => f.endsWith('.node'));
+              console.log('.node files:', nodeFiles);
+            } catch (e) {
+              console.error('Error:', e.message);
+            }
+          "
+        shell: bash
+      - name: Pre-test setup
+        run: node scripts/pre-test.js
         shell: bash
       - name: Test bindings
         run: bun test
@@ -259,7 +323,15 @@ jobs:
           name: bindings-${{ matrix.target }}
           path: .
       - name: List packages
-        run: ls -R .
+        run: |
+          echo "Contents after downloading artifacts:"
+          ls -la
+          echo "Looking for .node files:"
+          find . -name "*.node" -type f || echo "No .node files found"
+          echo "Looking for overlay-napi files:"
+          find . -name "overlay-napi*" -type f || echo "No overlay-napi files found"
+          echo "Directory structure:"
+          ls -R .
         shell: bash
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -275,6 +347,7 @@ jobs:
           options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }} --platform ${{ steps.docker.outputs.PLATFORM }}
           run: |
             npm install -g bun
+            node scripts/pre-test.js
             bun test
   publish:
     name: Publish

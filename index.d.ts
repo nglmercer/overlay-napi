@@ -42,6 +42,16 @@ export declare class OverlayWindow {
   setIgnoreMouseEvents(ignore: boolean): void
   setRenderWhenOccluded(render: boolean): void
   isOccluded(): boolean
+  /**
+   * Set whether the window should be excluded from screen capture (OBS, etc)
+   * When set to false (default), capture tools can capture this window
+   * When set to true, the window will appear black/invisible in captures
+   */
+  setExcludeFromCapture(exclude: boolean): void
+  /** Check if the window is excluded from screen capture */
+  isExcludedFromCapture(): boolean
+  /** Set whether the window should be shown in the taskbar */
+  setSkipTaskbar(skip: boolean): void
   /** Frame operations */
   clearFrame(color: Color): void
   drawRectangle(x: number, y: number, width: number, height: number, color: Color): void

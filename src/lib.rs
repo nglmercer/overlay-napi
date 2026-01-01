@@ -64,6 +64,8 @@ impl OverlayApp {
       event_callback: None,
       render_when_occluded: config.render_when_occluded.unwrap_or(true),
       occluded: false,
+      exclude_from_capture: false,
+      pending_resize: false,
     }));
 
     self.windows.push(state.clone());
@@ -236,6 +238,26 @@ impl OverlayWindow {
   #[napi]
   pub fn is_occluded(&self) -> Result<bool> {
     Ok(self.window_controller.is_occluded())
+  }
+
+  /// Set whether the window should be excluded from screen capture (OBS, etc)
+  /// When set to false (default), capture tools can capture this window
+  /// When set to true, the window will appear black/invisible in captures
+  #[napi]
+  pub fn set_exclude_from_capture(&self, exclude: bool) -> Result<()> {
+    self.window_controller.set_exclude_from_capture(exclude)
+  }
+
+  /// Check if the window is excluded from screen capture
+  #[napi]
+  pub fn is_excluded_from_capture(&self) -> Result<bool> {
+    Ok(self.window_controller.is_excluded_from_capture())
+  }
+
+  /// Set whether the window should be shown in the taskbar
+  #[napi]
+  pub fn set_skip_taskbar(&self, skip: bool) -> Result<()> {
+    self.window_controller.set_skip_taskbar(skip)
   }
 
   /// Frame operations

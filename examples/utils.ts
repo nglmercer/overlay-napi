@@ -21,8 +21,7 @@ export class OverlayManager {
     config.width = width
     config.height = height
     config.transparent = true
-    config.decorations = true
-    config.alwaysOnTop = true
+    config.alwaysOnTop = false
     config.renderWhenOccluded = options.renderWhenOccluded ?? true
 
     this.win = this.app.createWindow(config)

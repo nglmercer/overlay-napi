@@ -25,7 +25,8 @@ async function playAnimatedMedia(filePath: string) {
       renderWhenOccluded: true,
     })
 
-    // 3. Pre-decode frames for smooth playback (Caution: uses memory)
+    manager.win.setWindowLevel(0)
+    manager.win.setRenderWhenOccluded(true)
     console.log('⏳ Pre-decoding frames for performance...')
     const frames: Buffer[] = []
     for (let i = 0; i < frameCount; i++) {
@@ -36,7 +37,6 @@ async function playAnimatedMedia(filePath: string) {
     console.log('\n🚀 Starting playback...')
 
     let currentFrame = 0
-    // Try to get delay from metadata or default to 100ms (10fps)
     const delay = metadata.delay?.[0] || 100
 
     manager.startLoop(() => {

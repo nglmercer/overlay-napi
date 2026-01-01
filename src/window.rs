@@ -12,7 +12,18 @@ use winit::event_loop::{ActiveEventLoop, EventLoop};
 use winit::window::{Fullscreen, Window, WindowAttributes, WindowId};
 
 #[cfg(target_os = "windows")]
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::UI::WindowsAndMessaging::{
+  SetWindowDisplayAffinity, WDA_EXCLUDEFROMCAPTURE, WDA_NONE,
+};
+
+#[cfg(target_os = "windows")]
 use winit::platform::pump_events::EventLoopExtPumpEvents;
+
+#[cfg(target_os = "windows")]
+use winit::platform::windows::WindowExtWindows;
 
 pub struct WindowState {
   pub pixels: Option<Pixels<'static>>,
@@ -22,6 +33,8 @@ pub struct WindowState {
   pub event_callback: Option<ThreadsafeFunction<OverlayEvent>>,
   pub render_when_occluded: bool,
   pub occluded: bool,
+  pub exclude_from_capture: bool,
+  pub pending_resize: bool,
 }
 
 impl WindowState {
@@ -35,6 +48,8 @@ impl WindowState {
       event_callback: None,
       render_when_occluded: true,
       occluded: false,
+      exclude_from_capture: false,
+      pending_resize: false,
     }
   }
 }
@@ -74,11 +89,46 @@ impl<'a> ApplicationHandler for OverlayApplication<'a> {
         WindowEvent::Resized(size) => {
           overlay_event = Some(OverlayEvent::Resized);
           let mut state = state_arc.lock().unwrap();
+
+          // Skip invalid resize events
+          if size.width == 0 || size.height == 0 {
+            return;
+          }
+
+          let old_width = state.width;
+          let old_height = state.height;
+
+          // Skip if size hasn't actually changed
+          if old_width == size.width && old_height == size.height {
+            return;
+          }
+
           state.width = size.width;
           state.height = size.height;
+          state.pending_resize = true;
+
           if let Some(pixels) = &mut state.pixels {
-            let _ = pixels.resize_surface(size.width, size.height);
-            let _ = pixels.resize_buffer(size.width, size.height);
+            // IMPORTANT: Resize surface FIRST, then buffer
+            // This order is critical to avoid graphical artifacts
+            if let Err(e) = pixels.resize_surface(size.width, size.height) {
+              eprintln!("Failed to resize surface: {}", e);
+            }
+
+            if let Err(e) = pixels.resize_buffer(size.width, size.height) {
+              eprintln!("Failed to resize buffer: {}", e);
+            }
+
+            // Clear the buffer to avoid artifacts from old content
+            let frame = pixels.frame_mut();
+            // Fill with transparent black to avoid garbage
+            frame.fill(0);
+          }
+
+          state.pending_resize = false;
+
+          // Request redraw after resize
+          if let Some(window) = &state.window {
+            window.request_redraw();
           }
         }
         WindowEvent::Moved(_) => {
@@ -518,6 +568,83 @@ impl WindowController {
   pub fn is_occluded(&self) -> bool {
     let state = self.state.lock().unwrap();
     state.occluded
+  }
+
+  /// Set whether the window should be excluded from screen capture (OBS, etc)
+  /// When set to false, OBS and other capture tools can capture this window
+  /// When set to true, the window will appear black/invisible in captures
+  #[cfg(target_os = "windows")]
+  pub fn set_exclude_from_capture(&self, exclude: bool) -> Result<()> {
+    let mut state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      let hwnd = match window.window_handle() {
+        Ok(handle) => match handle.as_raw() {
+          RawWindowHandle::Win32(h) => h.hwnd.get() as *mut std::ffi::c_void,
+          _ => {
+            return Err(Error::new(
+              Status::GenericFailure,
+              "Not a Win32 window handle",
+            ))
+          }
+        },
+        Err(e) => {
+          return Err(Error::new(
+            Status::GenericFailure,
+            format!("Failed to get window handle: {}", e),
+          ))
+        }
+      };
+
+      let affinity = if exclude {
+        WDA_EXCLUDEFROMCAPTURE
+      } else {
+        WDA_NONE
+      };
+
+      let result = unsafe { SetWindowDisplayAffinity(hwnd, affinity) };
+
+      if result == 0 {
+        return Err(Error::new(
+          Status::GenericFailure,
+          "SetWindowDisplayAffinity failed",
+        ));
+      }
+
+      state.exclude_from_capture = exclude;
+      Ok(())
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
+  }
+
+  #[cfg(not(target_os = "windows"))]
+  pub fn set_exclude_from_capture(&self, exclude: bool) -> Result<()> {
+    let mut state = self.state.lock().unwrap();
+    state.exclude_from_capture = exclude;
+    // On non-Windows platforms, this is a no-op
+    Ok(())
+  }
+
+  pub fn is_excluded_from_capture(&self) -> bool {
+    let state = self.state.lock().unwrap();
+    state.exclude_from_capture
+  }
+
+  pub fn set_skip_taskbar(&self, skip: bool) -> Result<()> {
+    let state = self.state.lock().unwrap();
+    if let Some(window) = &state.window {
+      #[cfg(target_os = "windows")]
+      {
+        window.set_skip_taskbar(skip);
+        Ok(())
+      }
+      #[cfg(not(target_os = "windows"))]
+      {
+        Ok(())
+      }
+    } else {
+      Err(Error::new(Status::GenericFailure, "Window not initialized"))
+    }
   }
 }
 
