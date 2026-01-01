@@ -27,9 +27,25 @@ if (optionalFiles.length > 0) {
 }
 
 // Configurar variables de entorno para ayudar con la carga de bindings
+const target = process.env.TARGET
 if (optionalFiles.length > 0) {
-  // Si hay archivos .node, intentar usar el primero como fallback
-  process.env.NAPI_RS_NATIVE_LIBRARY_PATH = path.resolve(optionalFiles[0])
+  let selectedFile = optionalFiles[0]
+
+  if (target) {
+    // Intentar encontrar el archivo que coincida con el target
+    const targetMatch = optionalFiles.find((f) => f.includes(target.split('-')[0]) || f.includes(target))
+    if (targetMatch) {
+      selectedFile = targetMatch
+    }
+  } else {
+    // Intentar encontrar el archivo que coincida con la arquitectura actual
+    const archMatch = optionalFiles.find((f) => f.includes(process.arch))
+    if (archMatch) {
+      selectedFile = archMatch
+    }
+  }
+
+  process.env.NAPI_RS_NATIVE_LIBRARY_PATH = path.resolve(selectedFile)
   console.log(`Set NAPI_RS_NATIVE_LIBRARY_PATH to: ${process.env.NAPI_RS_NATIVE_LIBRARY_PATH}`)
 }
 

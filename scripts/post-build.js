@@ -1,11 +1,26 @@
 const fs = require('fs')
 const path = require('path')
 
-const platform = process.platform
-const arch = process.arch
-const target = process.env.TARGET || `${arch}-${platform}`
+let currentPlatform = process.platform
+let currentArch = process.arch
+const target = process.env.TARGET
 
-console.log(`Post-build script for ${platform}-${arch} (target: ${target})`)
+if (target) {
+  console.log(`Using TARGET environment variable: ${target}`)
+  if (target.includes('linux')) currentPlatform = 'linux'
+  if (target.includes('darwin') || target.includes('apple')) currentPlatform = 'darwin'
+  if (target.includes('windows') || target.includes('win32') || target.includes('msvc')) currentPlatform = 'win32'
+
+  if (target.includes('x86_64') || target.includes('x64')) currentArch = 'x64'
+  else if (target.includes('aarch64') || target.includes('arm64')) currentArch = 'arm64'
+  else if (target.includes('armv7') || target.includes('armhf')) currentArch = 'arm'
+  else if (target.includes('i686')) currentArch = 'ia32'
+}
+
+const platform = currentPlatform
+const arch = currentArch
+
+console.log(`Post-build script for ${platform}-${arch} (target: ${target || 'default'})`)
 
 // Mapping de plataformas y arquitecturas a los nombres esperados
 const platformMap = {
@@ -131,8 +146,7 @@ renameNodeFiles()
 
 // Crear enlaces para los nombres de paquetes opcionales esperados
 function createOptionalPackageLinks() {
-  const platform = process.platform
-  const arch = process.arch
+  // Use the calculated platform and arch instead of process.platform/arch
 
   // Mapeo de nombres de paquetes opcionales
   const packageNameMap = {

@@ -118,6 +118,8 @@ jobs:
         shell: bash
 
       - name: Post-build processing
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
           echo "Running post-build script..."
           node scripts/post-build.js

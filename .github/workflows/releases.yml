@@ -136,6 +136,8 @@ jobs:
         shell: bash
 
       - name: Post-build processing
+        env:
+          TARGET: ${{ matrix.settings.target }}
         run: |
           echo "Running post-build script..."
           node scripts/post-build.js
@@ -212,6 +214,8 @@ jobs:
           path: .
 
       - name: Post-build processing for test
+        env:
+          TARGET: ${{ matrix.settings.target }}
         run: |
           echo "Running post-build script for test environment..."
           node scripts/post-build.js
@@ -230,6 +234,8 @@ jobs:
           options: -v ${{ github.workspace }}:${{ github.workspace }} -w ${{ github.workspace }}
           run: |
             npm install -g bun
+            export TARGET=${{ matrix.settings.target }}
+            node scripts/post-build.js
             node scripts/verify-ci.js
             node scripts/pre-test.js
             bun test
